@@ -11,7 +11,7 @@ Requirements
 ------------
 Asterisk 1.6 header files
 Espeak libraries and header files
-	**It is recommended to use epseak version 1.41.01 or newer.
+	**It is recommended to use espeak version 1.41.01 or newer.
 	Earlier version of epseak had an file descriptor leak that could 
 	cause asterisk to crash. If upgrading is not an option patch your current 
 	version of epseak with the espeak.patch provided here.
