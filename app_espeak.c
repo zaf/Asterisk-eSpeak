@@ -200,7 +200,7 @@ static int app_exec(struct ast_channel *chan, void *data)
 	espeak_SetParameter(espeakCAPITALS, capind, 0);
 	
 	fl = fopen(wav_or_name, "w+");
-	if (fl = NULL) {
+	if (fl == NULL) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to create audio buffer file '%s'\n", wav_or_name);
 		ast_config_destroy(cfg);
 		return -1;
