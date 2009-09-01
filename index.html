@@ -10,20 +10,20 @@
 	<style type="text/css">
 		body {
   		margin-top: 1.0em;
-  		background-color: #fbf253;
+  		background-color: #f6772f;
 		  font-family: "Helvetica,Arial,FreeSans"; 
   		color: #000000;
     }
     #container {
       margin: 0 auto;
-      width: 700px;
+      width: 750px;
     }
-		h1 { font-size: 3.8em; color: #040dac; margin-bottom: 3px; }
+		h1 { font-size: 3.8em; color: #ffffff; margin-bottom: 3px; }
 		h1 .small { font-size: 0.4em; }
 		h1 a { text-decoration: none }
-		h2 { font-size: 1.5em; color: #040dac; }
-    h3 { text-align: center; color: #040dac; }
-    a { color: #040dac; }
+		h2 { font-size: 1.5em; color: #ffffff; }
+    h3 { text-align: center; color: #ffffff; }
+    a { color: #ffffff; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
     .download { float: right; }
 		pre { background: #000; color: #fff; padding: 15px;}
@@ -45,22 +45,57 @@
         <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
     </div>
       
-    <h1><a href="http://github.com/zaf/Asterisk-eSpeak">Asterisk-eSpeak</a> 
-      <span class="small">by <a href="http://github.com/zaf">zaf</a></span></h1>
+    <h1><a href="http://github.com/zaf/Asterisk-eSpeak">Asterisk-eSpeak</a> </h1>
 
     <div class="description">
-      Provides the "eSpeak" dialplan application, which allows you to use the eSpeak speech synthesizer with Asterisk.
+      Module for the Asterisk open source PBX which allows you to use the eSpeak voice synthesis engine to render text to speech.
     </div>
 
-    <h2>Authors</h2>
-<p>Lefteris Zafiris (zaf.000@gmail.com)<br/><br/>      </p>
-<h2>Contact</h2>
-<p>Lefteris Zafiris (zaf.000@gmail.com)<br/>      </p>
+    <p>eSpeak For Asterisk 1.6 This provides the "Espeak" dialplan application, which allows you to use the Espeak speech synthesizer with Asterisk. This module invokes the Espeak TTS engine locally, and uses it to render text to speech.</p>
+<h2>Dependencies</h2>
+<p>Asterisk 1.6.x header files
+<br />eSpeak libraries and header files
+<br />libsndfile libraries and header files
+<br />libresample libraries and header files
+</p>
+<h2>Install</h2>
+<p>To build just type the following in the app-eSpeak folder<br />
+$ make<br />
+$ make install</p>
+<p>To install the sample configuration file, issue the following command after
+the 'make install' command:<br />
+$ make samples</p>
+<h2>Usage</h2>
+<p>Espeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,
+send a text string, get back the resulting waveform and play it to
+the user, allowing any given interrupt keys to immediately terminate
+and return.</p>
+<p>Asterisk dialplan example:<br /><br />
+;eSpeak Demo<br />
+exten => 1234,1,Answer()<br />
+;;Play mesage using default language as set in espeak.conf<br />
+exten => 1234,n,Espeak("This is a simple espeak test in english.",any,)<br />
+;;Play message in Spanish<br />
+exten => 1234,n,Espeak("Esta es una simple prueba espeak en español.",any,es)<br />
+;;Play message in Greek<br />
+exten => 1234,n,Espeak("Αυτό είναι ένα απλό τέστ του espeak στα ελληνικά.",any,el)<br />
+;;Read a text file from disk (relative to the channel language)<br />
+;;and play it with espeak using the asterisk channel language.<br />
+exten => 1234,n,ReadFile(MYTEXT=/path/${LANGUAGE}/myfile,200)<br />
+exten => 1234,n,Espeak("${MYTEXY}",any,${LANGUAGE})<br />
+exten => 1234,n,Hangup()</p>
+<h2>License</h2>
+<p>The eSpeak module for asterisk is distributed under the GNU General Public License v2</p>
+<h2>Authors</h2>
+<p><a href="http://github.com/zaf">Lefteris Zafiris</a> (zaf.000@gmail.com)
+<br/>
+<br/>      </p>
 
 
     <h2>Download</h2>
     <p>
-      You can download this project in either
+      You can get the latest version <a href="http://cloud.github.com/downloads/zaf/Asterisk-eSpeak/Asterisk-eSpeak-1.6-0.1-beta.tar.gz">here</a>.<br />
+      Develompent snapshots are available in either
       <a href="http://github.com/zaf/Asterisk-eSpeak/zipball/master">zip</a> or
       <a href="http://github.com/zaf/Asterisk-eSpeak/tarball/master">tar</a> formats.
     </p>
