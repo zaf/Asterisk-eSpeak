@@ -1,0 +1,59 @@
+===========================================
+         Espeak For Asterisk 1.6
+===========================================
+
+This provides the "Espeak" dialplan application, which allows you to use
+the Espeak speech synthesizer with Asterisk. This module invokes the Espeak TTS engine
+locally, and uses it to render text to speech.
+
+------------
+Requirements
+------------
+Asterisk 1.6 header files
+Espeak libraries and header files
+libsndfile libraries and header files
+libresample libraries and header files
+
+------------
+Installation
+------------
+$ make
+$ make install
+
+To install the sample configuration file, issue the following command after
+the 'make install' command:
+
+$ make samples
+
+-----
+Usage
+-----
+Espeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,
+send a text string, get back the resulting waveform and play it to
+the user, allowing any given interrupt keys to immediately terminate
+and return.
+
+--------  
+Examples
+--------
+dialplan sample code for your extensions.conf
+  
+;Espeak Demo
+  		exten => 1234,1,Answer()
+  			;;Play mesage using default language as set in espeak.conf
+  		exten => 1234,n,Espeak("This is a simple espeak test in english.",any,)
+  			;;Play message in Spanish
+  		exten => 1234,n,Espeak("Esta es una simple prueba espeak en español.",any,es)
+  			;;Play message in Grrek
+  		exten => 1234,n,Espeak("Αυτό είναι ένα απλό τέστ του espeak στα ελληνικά.",any,el)
+  			;;Read a text file from disk (relative to the channel language)
+  			;;and play it with espeak using the asterisk channel language.
+  		exten => 1234,n,ReadFile(MYTEXT=/path/${LANGUAGE}/myfile,200)
+  		exten => 1234,n,Espeak("${MYTEXY}",any,${LANGUAGE})
+  		exten => 1234,n,Hangup()
+  		
+-------
+License
+-------
+The Espeak module for asterisk is distributed under the GNU General Public 
+License v2. See COPYING for details.

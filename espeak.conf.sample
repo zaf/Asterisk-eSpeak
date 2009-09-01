@@ -1,0 +1,48 @@
+;
+; eSpeak Configuration
+;
+[general]
+;
+; Use cache (yes, no - defaults to no)
+;
+;usecache=yes
+;
+; If usecache=yes, a directory to store waveform cache files. 
+; The cache is never cleared by the application, so you must take care of
+; cleaning it yourself (just delete any or all files from the cache).
+; THIS DIRECTORY *MUST* EXIST and must be writable from the asterisk process.
+; Defaults to /tmp, so it will be cleared periodically by Linux
+;
+;cachedir=/var/lib/asterisk/espeakcache/
+;
+
+[voice]
+;
+; The voice to use, i.e.
+; the name of the voice file to use from from espeak-data/voices
+; Use "espeak --voices" for a list of available voices
+; (default is "default")
+;
+;voice=af
+;
+; The playback speed in words per minute (default is 150)
+;
+;speed=130
+;
+;  Amplitude, 0 to 200, default is 100
+;
+;volume=100
+;
+; Word gap. Pause between words, units of 10mS at the default speed
+;
+;wordgap=1
+;
+; Pitch adjustment, 0 to 99, default is 50
+;
+;pitch=40
+;
+; Indicate capital letters with: 1=sound, 2=the word "capitals",
+; higher values = a pitch increase
+;
+;capind=15
+
