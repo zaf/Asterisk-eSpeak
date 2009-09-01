@@ -1,0 +1,9 @@
+--- espeak-1.40.02/src/old-synthdata.cpp	2009-08-25 08:18:14.781597401 +0300
++++ espeak-1.40.02/src/synthdata.cpp	2009-08-25 08:18:40.086597526 +0300
+@@ -677,5 +677,6 @@
+ 			}
+ 		}
+ 	}
++	fclose(f);
+ }  //  end of LoadConfig
+ 
