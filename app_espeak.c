@@ -109,7 +109,7 @@ static int app_exec(struct ast_channel *chan, void *data)
 	);
 
 	if (ast_strlen_zero(data)) {
-		ast_log(AST_LOG_ERROR, "eSpeak requires an argument (text)\n");
+		ast_log(LOG_ERROR, "eSpeak requires an argument (text)\n");
 		return -1;
 	}
 
@@ -172,7 +172,7 @@ static int app_exec(struct ast_channel *chan, void *data)
 					ast_answer(chan);
 				res = ast_streamfile(chan, cachefile, chan->language);
 				if (res) {
-					ast_log(AST_LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n", 
+					ast_log(LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n", 
 							chan->name);
 				} else {
 					res = ast_waitstream(chan, args.interrupt);
