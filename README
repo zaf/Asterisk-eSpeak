@@ -46,7 +46,7 @@ dialplan sample code for your extensions.conf
 ;Espeak Demo
   		exten => 1234,1,Answer()
   			;;Play mesage using default language as set in espeak.conf
-  		exten => 1234,n,Espeak("This is a simple espeak test in english.",any,)
+  		exten => 1234,n,Espeak("This is a simple espeak test in english.",any)
   			;;Play message in Spanish
   		exten => 1234,n,Espeak("Esta es una simple prueba espeak en español.",any,es)
   			;;Play message in Greek
