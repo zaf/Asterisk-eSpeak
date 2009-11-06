@@ -78,7 +78,7 @@ static int app_exec(struct ast_channel *chan, void *data)
 	void *handle;
 	double ratio;
 	const char *mydata;
-	const char *cachedir = "";
+	const char *cachedir = "/tmp";
 	const char *temp;
 	int usecache = 0;
 	int writecache = 0;
@@ -151,7 +151,7 @@ static int app_exec(struct ast_channel *chan, void *data)
 	if (args.interrupt && !strcasecmp(args.interrupt, "any"))
 		args.interrupt = AST_DIGIT_ANY;
 	
-	if (strcasecmp(args.language, ""))
+	if (!ast_strlen_zero(args.language))
 		voice = args.language;
 
 	ast_debug(1, "eSpeak: Text passed: %s\nInterrupt key(s): %s\nLanguage: %s\n", args.text,
