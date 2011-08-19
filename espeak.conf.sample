@@ -11,9 +11,18 @@
 ; The cache is never cleared by the application, so you must take care of
 ; cleaning it yourself (just delete any or all files from the cache).
 ; THIS DIRECTORY *MUST* EXIST and must be writable from the asterisk process.
-; Defaults to /tmp, so it will be cleared periodically by Linux
+; Defaults to /tmp.
 ;
 ;cachedir=/var/lib/asterisk/espeakcache/
+;
+; Target sample rate for the generated sound files in Hz (default is 8000)
+; For now asterisk (1.8 or newer) supports playback of 8000Hz or 16000Hz wav files
+; so possible values are only 8000 and 16000. If set to another value it will automatically 
+; fall back to 8000Hz. 
+; 
+; ** This setting is only for asterisk 1.8 or newer **
+;
+;samplerate=8000
 ;
 
 [voice]

@@ -1,3 +1,6 @@
+2011-19-08 Lefteris Zafiris <zaf.000@gmail.com> - 2.0
+    Added option for generating 16000Hz sound files.
+
 2009-06-11 Lefteris Zafiris <zaf.000@gmail.com> - 1.6.0.1
 	Released as stable.
 	Fixed a bug in argument parsing that could
