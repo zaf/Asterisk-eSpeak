@@ -34,7 +34,6 @@
 #include "asterisk.h"
 
 ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
-
 #include <stdio.h>
 #include <espeak/speak_lib.h>
 #include <sndfile.h>
@@ -45,25 +44,21 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 #include "asterisk/config.h"
 #include "asterisk/app.h"
 #include "asterisk/utils.h"
-
 #define AST_MODULE "eSpeak"
 #define ESPEAK_CONFIG "espeak.conf"
 #define MAXLEN 2048
-
 static char *app = "eSpeak";
-
 static char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
-
 static char *descrip =
-"  eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,\n"
-"send a text string, get back the resulting waveform and play it to\n"
-"the user, allowing any given interrupt keys to immediately terminate\n"
-"and return.\n";
+ "  eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,\n"
+ "send a text string, get back the resulting waveform and play it to\n"
+ "the user, allowing any given interrupt keys to immediately terminate\n"
+ "and return.\n";
 
-static int synth_callback(short *wav, int numsamples, espeak_EVENT * events) {
-	if (wav) {
+static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
+{
+	if (wav)
 		fwrite(wav, sizeof(short), numsamples, events[0].user_data);
-	}
 	return 0;
 }
 
@@ -90,7 +85,7 @@ static int app_exec(struct ast_channel *chan, void *data)
 	int bits = 16;
 	int *offset, sample_rate, pos, bufferpos, outcount;
 	float file_size;
-    int target_sample_rate = 8000;
+	int target_sample_rate = 8000;
 	int speed = 150;
 	int volume = 100;
 	int wordgap = 1;
@@ -100,7 +95,8 @@ static int app_exec(struct ast_channel *chan, void *data)
 	static unsigned char wave_hdr[44] = {
 		'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ',
 		0x10, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		2, 0, 0x10, 0, 'd', 'a', 't', 'a', 0, 0, 0, 0};
+		2, 0, 0x10, 0, 'd', 'a', 't', 'a', 0, 0, 0, 0
+	};
 	struct ast_config *cfg;
 	struct ast_flags config_flags = { 0 };
 	AST_DECLARE_APP_ARGS(args,
@@ -118,8 +114,8 @@ static int app_exec(struct ast_channel *chan, void *data)
 
 	if (!cfg) {
 		ast_log(LOG_WARNING,
-				"eSpeak: No such configuration file %s using default settings\n",
-				ESPEAK_CONFIG);
+			"eSpeak: No such configuration file %s using default settings\n",
+			ESPEAK_CONFIG);
 	} else {
 		if ((temp = ast_variable_retrieve(cfg, "general", "usecache")))
 			usecache = ast_true(temp);
@@ -127,8 +123,8 @@ static int app_exec(struct ast_channel *chan, void *data)
 		if (!(cachedir = ast_variable_retrieve(cfg, "general", "cachedir")))
 			cachedir = "/tmp";
 
-        if ((temp = ast_variable_retrieve(cfg, "general", "samplerate")))
-            target_sample_rate = atoi(temp);
+		if ((temp = ast_variable_retrieve(cfg, "general", "samplerate")))
+			target_sample_rate = atoi(temp);
 
 		if ((temp = ast_variable_retrieve(cfg, "voice", "speed")))
 			speed = atoi(temp);
@@ -159,13 +155,15 @@ static int app_exec(struct ast_channel *chan, void *data)
 		voice = args.language;
 
 	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
-		ast_log(LOG_WARNING, "eSpeak: Unsupported sample rate: %d. Falling back to 8000Hz\n",
-				target_sample_rate);
-		target_sample_rate=8000;
+		ast_log(LOG_WARNING,
+			"eSpeak: Unsupported sample rate: %d. Falling back to 8000Hz\n",
+			target_sample_rate);
+		target_sample_rate = 8000;
 	}
-	
-	ast_debug(1, "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %d\n",
-				args.text, args.interrupt, voice, target_sample_rate);
+
+	ast_debug(1,
+		"eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %d\n",
+		args.text, args.interrupt, voice, target_sample_rate);
 
 	/*Cache mechanism */
 	if (usecache) {
@@ -182,8 +180,8 @@ static int app_exec(struct ast_channel *chan, void *data)
 					ast_answer(chan);
 				res = ast_streamfile(chan, cachefile, chan->language);
 				if (res) {
-					ast_log(LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n", 
-							chan->name);
+					ast_log(LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n",
+						chan->name);
 				} else {
 					res = ast_waitstream(chan, args.interrupt);
 					ast_stopstream(chan);
@@ -199,17 +197,21 @@ static int app_exec(struct ast_channel *chan, void *data)
 	if (target_sample_rate == 16000) {
 		snprintf(wav_name, sizeof(wav_name), "%s.wav16", tmp_name);
 		snprintf(wav_or_name, sizeof(wav_or_name), "%s_or.wav16", tmp_name);
-	} else if (target_sample_rate == 8000) {
+	}
+
+	if (target_sample_rate == 8000) {
 		snprintf(wav_name, sizeof(wav_name), "%s.wav", tmp_name);
 		snprintf(wav_or_name, sizeof(wav_or_name), "%s_or.wav", tmp_name);
-	} else {
-		ast_log(LOG_ERROR, "eSpeak: Unsupported sample rate '%d'\n ", target_sample_rate);
-		ast_config_destroy(cfg);
-		return -1;
 	}
 
 	/* Invoke eSpeak */
-	sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 2000, NULL, 0);
+	sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, NULL, 0);
+
+	if (sample_rate == -1) {
+		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
+		ast_config_destroy(cfg);
+		return -1;
+	}
 	espeak_SetSynthCallback(synth_callback);
 	espeak_SetVoiceByName(voice);
 	espeak_SetParameter(espeakRATE, speed, 0);
@@ -220,18 +222,20 @@ static int app_exec(struct ast_channel *chan, void *data)
 
 	fl = fopen(wav_or_name, "w+");
 	if (fl == NULL) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to create audio buffer file '%s'\n", wav_or_name);
+		ast_log(LOG_ERROR, "eSpeak: Failed to create audio buffer file '%s'\n",
+			wav_or_name);
 		ast_config_destroy(cfg);
 		return -1;
 	} else {
 		/* Copy wav header */
 		offset = (int *) (&wave_hdr[24]);
 		offset[0] = sample_rate;
-		offset[1] = sample_rate * (bits/8);
+		offset[1] = sample_rate * (bits / 8);
 		fwrite(wave_hdr, 1, sizeof(wave_hdr), fl);
 	}
 
-	espeak_Synth(args.text, strlen(args.text) + 1, 0, POS_CHARACTER, 0, espeakCHARS_AUTO, NULL, fl);
+	espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER, 0, espeakCHARS_AUTO,
+		NULL, fl);
 	espeak_Terminate();
 
 	/* Fix file header */
@@ -244,77 +248,79 @@ static int app_exec(struct ast_channel *chan, void *data)
 	fwrite(wave_hdr, 1, sizeof(wave_hdr), fl);
 	fclose(fl);
 
-    /* Resample sound file */
-    if (sample_rate != target_sample_rate) {
-    	ratio = (double) ((double) target_sample_rate / (double) sample_rate);
-    	memset(&src_info, 0, sizeof(src_info));
-    	memset(&dst_info, 0, sizeof(dst_info));
-	    src_file = sf_open(wav_or_name, SFM_READ, &src_info);
-	    if (!src_file) {
-	    	ast_log(LOG_ERROR, "eSpeak: Failed to read audio file '%s'\n", wav_or_name);
-	    	ast_config_destroy(cfg);
-	    	remove(wav_or_name);
-	    	return -1;
-	    }
+	/* Resample sound file */
+	if (sample_rate != target_sample_rate) {
+		ratio = (double) ((double) target_sample_rate / (double) sample_rate);
+		memset(&src_info, 0, sizeof(src_info));
+		memset(&dst_info, 0, sizeof(dst_info));
+		src_file = sf_open(wav_or_name, SFM_READ, &src_info);
+		if (!src_file) {
+			ast_log(LOG_ERROR, "eSpeak: Failed to read audio file '%s'\n", wav_or_name);
+			ast_config_destroy(cfg);
+			remove(wav_or_name);
+			return -1;
+		}
 
-	    memcpy(&dst_info, &src_info, sizeof(SF_INFO));
-	    dst_info.samplerate = target_sample_rate;
-	    dst_file = sf_open(wav_name, SFM_WRITE, &dst_info);
-	    if (!dst_file) {
-		    ast_log(LOG_ERROR, "eSpeak: Failed to create audio file '%s'\n", wav_name);
-		    ast_config_destroy(cfg);
-		    sf_close(src_file);
-		    remove(wav_or_name);
-		    return -1;
-	    }
-    	dst_info.frames = src_info.frames * (sf_count_t)target_sample_rate / (sf_count_t)sample_rate;
+		memcpy(&dst_info, &src_info, sizeof(SF_INFO));
+		dst_info.samplerate = target_sample_rate;
+		dst_file = sf_open(wav_name, SFM_WRITE, &dst_info);
+		if (!dst_file) {
+			ast_log(LOG_ERROR, "eSpeak: Failed to create audio file '%s'\n", wav_name);
+			ast_config_destroy(cfg);
+			sf_close(src_file);
+			remove(wav_or_name);
+			return -1;
+		}
+		dst_info.frames =
+			src_info.frames * (sf_count_t) target_sample_rate / (sf_count_t) sample_rate;
 
-	    src_len = 16384;
-	    dst_len = (src_len * ratio);
-	    src = (float *) malloc(src_len * sizeof(float));
-	    dst = (float *) malloc(dst_len * sizeof(float));
+		src_len = 16384;
+		dst_len = (src_len * ratio);
+		src = (float *) malloc(src_len * sizeof(float));
+		dst = (float *) malloc(dst_len * sizeof(float));
 
-	    handle = (void *) malloc(sizeof(void *));
-	    handle = resample_open(1, ratio, ratio);
-	    if (!handle) {
-	    	ast_log(LOG_ERROR, "eSpeak: Failed open resampler\n");
-	    	ast_config_destroy(cfg);
-	    	sf_close(src_file);
-	    	sf_close(dst_file);
-	    	free(src);
-	    	free(dst);
-	    	remove(wav_or_name);
-	    	return -1;
-	    }
+		handle = (void *) malloc(sizeof(void *));
+		handle = resample_open(1, ratio, ratio);
+		if (!handle) {
+			ast_log(LOG_ERROR, "eSpeak: Failed open resampler\n");
+			ast_config_destroy(cfg);
+			sf_close(src_file);
+			sf_close(dst_file);
+			free(src);
+			free(dst);
+			remove(wav_or_name);
+			return -1;
+		}
 
-	    pos = 0;
-	    bufferpos = 0;
-	    outcount = 0;
+		pos = 0;
+		bufferpos = 0;
+		outcount = 0;
 
-	    while (pos < src_info.frames) {
-	    	int block = MIN(src_len - bufferpos, src_info.frames - pos);
-	    	int last_flag = (pos + block == src_info.frames);
-	    	int in_used, out = 0;
-	    	sf_readf_float(src_file, &src[bufferpos], block);
-	    	block += bufferpos;
-	    	in_used = 0;
-	    	out = resample_process(handle, ratio, src, block, last_flag, &in_used, dst, dst_len);
-	    	sf_writef_float(dst_file, dst, out);
-	    	bufferpos = block - in_used;
-	    	pos += in_used;
-	    	outcount += out;
-	    }
+		while (pos < src_info.frames) {
+			int block = MIN(src_len - bufferpos, src_info.frames - pos);
+			int last_flag = (pos + block == src_info.frames);
+			int in_used, out = 0;
+			sf_readf_float(src_file, &src[bufferpos], block);
+			block += bufferpos;
+			in_used = 0;
+			out = resample_process(handle, ratio, src, block, last_flag, &in_used, dst,
+				dst_len);
+			sf_writef_float(dst_file, dst, out);
+			bufferpos = block - in_used;
+			pos += in_used;
+			outcount += out;
+		}
 
-	    resample_close(handle);
-	    sf_write_sync(dst_file);
-	    sf_close(src_file);
-	    sf_close(dst_file);
-	    free(src);
-	    free(dst);
-	    remove(wav_or_name);
-    } else {
-        rename(wav_or_name, wav_name);
-    }
+		resample_close(handle);
+		sf_write_sync(dst_file);
+		sf_close(src_file);
+		sf_close(dst_file);
+		free(src);
+		free(dst);
+		remove(wav_or_name);
+	} else {
+		rename(wav_or_name, wav_name);
+	}
 
 	/* Save file to cache if set */
 	if (writecache) {
