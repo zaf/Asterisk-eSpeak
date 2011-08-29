@@ -54,10 +54,10 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 static char *app = "eSpeak";
 static char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
 static char *descrip =
- "  eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,\n"
- "send a text string, get back the resulting waveform and play it to\n"
- "the user, allowing any given interrupt keys to immediately terminate\n"
- "and return.\n";
+	"  eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,\n"
+	"send a text string, get back the resulting waveform and play it to\n"
+	"the user, allowing any given interrupt keys to immediately terminate\n"
+	"and return.\n";
 
 static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
 {
@@ -175,7 +175,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 					ast_answer(chan);
 				res = ast_streamfile(chan, cachefile, chan->language);
 				if (res) {
-					ast_log(LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n",
+					ast_log(LOG_ERROR, "eSpeak: ast_streamfile from cache failed on %s\n",
 						chan->name);
 				} else {
 					res = ast_waitstream(chan, args.interrupt);
@@ -187,17 +187,13 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		}
 	}
 
-	/* Create temp filenames */
+	/* Create filenames */
 	snprintf(tmp_name, sizeof(tmp_name), "/tmp/eSpeak_%li", ast_random());
-	if (target_sample_rate == 16000) {
+	if (target_sample_rate == 16000)
 		snprintf(wav_name, sizeof(wav_name), "%s.wav16", tmp_name);
-		snprintf(raw_name, sizeof(raw_name), "%s.raw", tmp_name);
-	}
-
-	if (target_sample_rate == 8000) {
+	if (target_sample_rate == 8000)
 		snprintf(wav_name, sizeof(wav_name), "%s.wav", tmp_name);
-		snprintf(raw_name, sizeof(raw_name), "%s.raw", tmp_name);
-	}
+	snprintf(raw_name, sizeof(raw_name), "%s.raw", tmp_name);
 
 	/* Invoke eSpeak */
 	sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, NULL, 0);
@@ -222,8 +218,15 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		return -1;
 	}
 
-	espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER, 0, espeakCHARS_AUTO,
-		NULL, fl);
+	espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER, 0, espeakCHARS_AUTO, NULL, fl);
+/*	if( != "EE_OK") {
+		espeak_Terminate();
+		ast_log(LOG_ERROR, "eSpeak: Failed to synthesize speech for the specified text.\n");
+		ast_config_destroy(cfg);
+		fclose(fl);
+		ast_filedelete(raw_name, NULL);
+		return -1;
+	}*/
 	espeak_Terminate();
 	fclose(fl);
 
@@ -237,7 +240,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	if (!src_file) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to read raw audio data '%s'\n", raw_name);
 		ast_config_destroy(cfg);
-		remove(raw_name);
+		ast_filedelete(raw_name, NULL);
 		return -1;
 	}
 	memcpy(&dst_info, &src_info, sizeof(SF_INFO));
@@ -248,7 +251,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		ast_log(LOG_ERROR, "eSpeak: Failed to create wav audio file '%s'\n", wav_name);
 		ast_config_destroy(cfg);
 		sf_close(src_file);
-		remove(raw_name);
+		ast_filedelete(raw_name, NULL);
 		return -1;
 	}
 	src = (float *) malloc(src_info.frames * sizeof(float));
@@ -263,7 +266,18 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		rate_change.output_frames = dst_info.frames;
 		rate_change.src_ratio = (double) (target_sample_rate / sample_rate);
 
-		src_simple(&rate_change, SRC_SINC_FASTEST, 1);
+		res = src_simple(&rate_change, SRC_SINC_FASTEST, 1);
+		if (res) {
+			ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n", wav_name, src_strerror(res));
+			ast_config_destroy(cfg);
+			sf_close(src_file);
+			sf_close(dst_file);
+			free(src);
+			free(dst);
+			ast_filedelete(raw_name, NULL);
+			return -1;
+		}
+
 	} else {
 		memcpy(dst, src, dst_info.frames * sizeof(float));
 	}
@@ -273,7 +287,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	sf_close(dst_file);
 	free(src);
 	free(dst);
-	remove(raw_name);
+	ast_filedelete(raw_name, NULL);
 
 	/* Save file to cache if set */
 	if (writecache) {
