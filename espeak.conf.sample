@@ -16,11 +16,9 @@
 ;cachedir=/var/lib/asterisk/espeakcache/
 ;
 ; Target sample rate for the generated sound files in Hz (default is 8000)
-; For now asterisk (1.8 or newer) supports playback of 8000Hz or 16000Hz wav files
-; so possible values are only 8000 and 16000. If set to another value it will automatically 
-; fall back to 8000Hz. 
-; 
-; ** This setting is only for asterisk 1.8 or newer **
+; For now app_espeak supports generation of 8000Hz or 16000Hz wav files
+; so possible values are only 8000 and 16000. If set to another value it will 
+; automatically fall back to 8000Hz. 
 ;
 ;samplerate=8000
 ;
@@ -54,4 +52,3 @@
 ; higher values = a pitch increase
 ;
 ;capind=15
-
