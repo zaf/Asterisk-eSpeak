@@ -45,8 +45,8 @@ clean:
 	rm -f app_espeak.o app_espeak.so .*.d
 
 install: _all
-	$(INSTALL) -m 755 -d $(MODULES_DIR)
-	$(INSTALL) -m 755 app_espeak.so $(MODULES_DIR)
+	$(INSTALL) -m 755 -d $(DESTDIR)$(MODULES_DIR)
+	$(INSTALL) -m 755 app_espeak.so $(DESTDIR)$(MODULES_DIR)
 	@echo " +---- app_espeak Installation Complete -----+"  
 	@echo " +                                           +"
 	@echo " + app_espeak has successfully been installed+"  
@@ -57,12 +57,11 @@ install: _all
 	@echo " +-------------------------------------------+"
 
 samples:
-	@mkdir -p $(ASTETCDIR)
-	@if [ -f $(ASTETCDIR)/$(CONFNAME) ]; then \
+	@mkdir -p $(DESTDIR)$(ASTETCDIR)
+	@if [ -f $(DESTDIR)$(ASTETCDIR)/$(CONFNAME) ]; then \
 		echo "Backing up previous config file as $(CONFNAME).old";\
-		mv -f $(ASTETCDIR)/$(CONFNAME) $(ASTETCDIR)/$(CONFNAME).old ; \
+		mv -f $(DESTDIR)$(ASTETCDIR)/$(CONFNAME) $(DESTDIR)$(ASTETCDIR)/$(CONFNAME).old ; \
 	fi ;
-	@echo "Installing new config file $(CONFNAME)";\
-	$(INSTALL) -m 644 $(SAMPLENAME) $(ASTETCDIR)/$(CONFNAME);
+	$(INSTALL) -m 644 $(SAMPLENAME) $(DESTDIR)$(ASTETCDIR)/$(CONFNAME)
 	@echo " ------- app_esepak confing Installed --------"
 
