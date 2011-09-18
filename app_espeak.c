@@ -233,16 +233,14 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	}
 	
 	espk_error = espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER, 0, espeakCHARS_AUTO, NULL, fl);
+	espeak_Terminate();
+	fclose(fl);
 	if(espk_error != EE_OK) {
-		espeak_Terminate();
 		ast_log(LOG_ERROR, "eSpeak: Failed to synthesize speech for the specified text.\n");
 		ast_config_destroy(cfg);
-		fclose(fl);
 		ast_filedelete(raw_name, NULL);
 		return -1;
 	}
-	espeak_Terminate();
-	fclose(fl);
 
 	/* Resample sound file */
 	if (sample_rate != target_sample_rate) {
@@ -273,8 +271,8 @@ static int app_exec(struct ast_channel *chan, const char *data)
 			ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n", raw_name, src_strerror(res));
 			ast_config_destroy(cfg);
 			sf_close(src_file);
-			free(src_buff);
-			free(dst_buff);
+			ast_free(src_buff);
+			ast_free(dst_buff);
 			ast_filedelete(raw_name, NULL);
 			return -1;
 		}
@@ -284,8 +282,8 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		sf_writef_float(src_file, dst_buff, src_info.frames);
 		sf_write_sync(src_file);
 		sf_close(src_file);
-		free(src_buff);
-		free(dst_buff);
+		ast_free(src_buff);
+		ast_free(dst_buff);
 	}
 
 	/* Create filenames */
