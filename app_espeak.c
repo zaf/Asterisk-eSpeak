@@ -1,7 +1,7 @@
 /*
  * Asterisk -- An open source telephony toolkit.
  *
- * Copyright (C) 2009, Lefteris Zafiris
+ * Copyright (C) 2009 - 2011, Lefteris Zafiris
  *
  * Lefteris Zafiris <zaf.000@gmail.com>
  *
@@ -45,9 +45,18 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 #include "asterisk/app.h"
 #include "asterisk/utils.h"
 #include "asterisk/strings.h"
+
 #define AST_MODULE "eSpeak"
 #define ESPEAK_CONFIG "espeak.conf"
 #define MAXLEN 2048
+#define DEF_RATE 8000
+#define DEF_SPEED 150
+#define DEF_VOLUME 100
+#define DEF_WORDGAP 1
+#define DEF_PITCH 50
+#define DEF_CAPIND 0
+#define DEF_VOICE "default"
+#define DEF_DIR "/tmp"
 /* libsndfile formats */
 #define RAW_PCM_S16LE 262146
 #define WAV_PCM_S16LE 65538
@@ -63,13 +72,13 @@ static char *descrip =
 static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
 {
 	if (wav) {
-		if(fwrite(wav, sizeof(short), numsamples, events[0].user_data))
+		if (fwrite(wav, sizeof(short), numsamples, events[0].user_data))
 			return 0;
 	}
 	return 1;
 }
 
-static int app_exec(struct ast_channel *chan, const char *data)
+static int espeak_exec(struct ast_channel *chan, const char *data)
 {
 	int res = 0;
 	SNDFILE *src_file;
@@ -82,7 +91,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	espeak_ERROR espk_error;
 	float *src_buff, *dst_buff;
 	char *mydata;
-	const char *cachedir = "/tmp";
+	const char *cachedir = DEF_DIR;
 	const char *temp;
 	int usecache = 0;
 	int writecache = 0;
@@ -91,13 +100,13 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	char raw_name[17] = "/tmp/espk_XXXXXX";
 	char slin_name[23];
 	int sample_rate;
-	double target_sample_rate = 8000;
-	int speed = 150;
-	int volume = 100;
-	int wordgap = 1;
-	int pitch = 50;
-	int capind = 0;
-	const char *voice = "default";
+	double target_sample_rate = DEF_RATE;
+	int speed = DEF_SPEED;
+	int volume = DEF_VOLUME;
+	int wordgap = DEF_WORDGAP;
+	int pitch = DEF_PITCH;
+	int capind = DEF_CAPIND;
+	const char *voice = DEF_VOICE;
 	struct ast_config *cfg;
 	struct ast_flags config_flags = { 0 };
 	AST_DECLARE_APP_ARGS(args,
@@ -113,16 +122,16 @@ static int app_exec(struct ast_channel *chan, const char *data)
 
 	cfg = ast_config_load(ESPEAK_CONFIG, config_flags);
 
-	if (!cfg) {
+	if (!cfg || cfg == CONFIG_STATUS_FILEINVALID) {
 		ast_log(LOG_WARNING,
-			"eSpeak: No such configuration file %s using default settings\n",
-			ESPEAK_CONFIG);
+				"eSpeak: Unable to read confing file %s. Using default settings\n",
+				ESPEAK_CONFIG);
 	} else {
 		if ((temp = ast_variable_retrieve(cfg, "general", "usecache")))
 			usecache = ast_true(temp);
 
-		if (!(cachedir = ast_variable_retrieve(cfg, "general", "cachedir")))
-			cachedir = "/tmp";
+		if ((temp = ast_variable_retrieve(cfg, "general", "cachedir")))
+			cachedir = temp;
 
 		if ((temp = ast_variable_retrieve(cfg, "general", "samplerate")))
 			target_sample_rate = atoi(temp);
@@ -157,13 +166,13 @@ static int app_exec(struct ast_channel *chan, const char *data)
 
 	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
 		ast_log(LOG_WARNING,
-			"eSpeak: Unsupported sample rate: %lf. Falling back to 8000Hz\n",
-			target_sample_rate);
-		target_sample_rate = 8000;
+				"eSpeak: Unsupported sample rate: %lf. Falling back to %d\n",
+				target_sample_rate, DEF_RATE);
+		target_sample_rate = DEF_RATE;
 	}
-	
+
 	args.text = ast_strip_quoted(args.text, "\"", "\"");
-	
+
 	if (ast_strlen_zero(args.text)) {
 		ast_log(LOG_WARNING, "eSpeak: No text passed for synthesis.\n");
 		ast_config_destroy(cfg);
@@ -171,8 +180,8 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	}
 
 	ast_debug(1,
-		"eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %lf\n",
-		args.text, args.interrupt, voice, target_sample_rate);
+			  "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %lf\n",
+			  args.text, args.interrupt, voice, target_sample_rate);
 
 	/*Cache mechanism */
 	if (usecache) {
@@ -190,7 +199,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 				res = ast_streamfile(chan, cachefile, chan->language);
 				if (res) {
 					ast_log(LOG_ERROR, "eSpeak: ast_streamfile from cache failed on %s\n",
-						chan->name);
+							chan->name);
 				} else {
 					res = ast_waitstream(chan, args.interrupt);
 					ast_stopstream(chan);
@@ -231,12 +240,15 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		ast_config_destroy(cfg);
 		return -1;
 	}
-	
-	espk_error = espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER, 0, espeakCHARS_AUTO, NULL, fl);
+
+	espk_error =
+		espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER,
+					 (int) strlen(args.text), espeakCHARS_AUTO, NULL, fl);
 	espeak_Terminate();
 	fclose(fl);
-	if(espk_error != EE_OK) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to synthesize speech for the specified text.\n");
+	if (espk_error != EE_OK) {
+		ast_log(LOG_ERROR,
+				"eSpeak: Failed to synthesize speech for the specified text.\n");
 		ast_config_destroy(cfg);
 		ast_filedelete(raw_name, NULL);
 		return -1;
@@ -245,7 +257,7 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	/* Resample sound file */
 	if (sample_rate != target_sample_rate) {
 		memset(&src_info, 0, sizeof(src_info));
-		src_info.samplerate = (int)sample_rate;
+		src_info.samplerate = (int) sample_rate;
 		src_info.channels = 1;
 		src_info.format = RAW_PCM_S16LE;
 		src_file = sf_open(raw_name, SFM_RDWR, &src_info);
@@ -257,7 +269,8 @@ static int app_exec(struct ast_channel *chan, const char *data)
 		}
 		src_buff = (float *) ast_malloc(src_info.frames * sizeof(float));
 		sf_readf_float(src_file, src_buff, src_info.frames);
-		dst_frames = src_info.frames * (sf_count_t)target_sample_rate / (sf_count_t)sample_rate;
+		dst_frames =
+			src_info.frames * (sf_count_t) target_sample_rate / (sf_count_t) sample_rate;
 		dst_buff = (float *) ast_malloc(dst_frames * sizeof(float));
 
 		rate_change.data_in = src_buff;
@@ -268,7 +281,8 @@ static int app_exec(struct ast_channel *chan, const char *data)
 
 		res = src_simple(&rate_change, SRC_SINC_FASTEST, 1);
 		if (res) {
-			ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n", raw_name, src_strerror(res));
+			ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n",
+					raw_name, src_strerror(res));
 			ast_config_destroy(cfg);
 			sf_close(src_file);
 			ast_free(src_buff);
@@ -287,10 +301,10 @@ static int app_exec(struct ast_channel *chan, const char *data)
 	}
 
 	/* Create filenames */
-	if (target_sample_rate == 16000)
-		snprintf(slin_name, sizeof(slin_name), "%s.sln16", raw_name);
 	if (target_sample_rate == 8000)
 		snprintf(slin_name, sizeof(slin_name), "%s.sln", raw_name);
+	if (target_sample_rate == 16000)
+		snprintf(slin_name, sizeof(slin_name), "%s.sln16", raw_name);
 	rename(raw_name, slin_name);
 
 	/* Save file to cache if set */
@@ -321,9 +335,8 @@ static int unload_module(void)
 
 static int load_module(void)
 {
-	return ast_register_application(app, app_exec, synopsis, descrip) ?
+	return ast_register_application(app, espeak_exec, synopsis, descrip) ?
 		AST_MODULE_LOAD_DECLINE : AST_MODULE_LOAD_SUCCESS;
 }
 
 AST_MODULE_INFO_STANDARD(ASTERISK_GPL_KEY, "eSpeak TTS Interface");
-
