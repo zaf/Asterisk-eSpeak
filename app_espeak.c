@@ -69,56 +69,31 @@ static char *descrip =
 	"the user, allowing any given interrupt keys to immediately terminate\n"
 	"and return.\n";
 
-static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
-{
-	if (wav) {
-		if (fwrite(wav, sizeof(short), numsamples, events[0].user_data))
-			return 0;
-	}
-	return 1;
-}
+static const char *cachedir;
+static int usecache;
+static double target_sample_rate;
+static int speed;
+static int volume;
+static int wordgap;
+static int pitch;
+static int capind;
+static const char *def_voice;
 
-static int espeak_exec(struct ast_channel *chan, const char *data)
+static int read_config(void)
 {
-	int res = 0;
-	SNDFILE *src_file;
-	SF_INFO src_info;
-	FILE *fl;
-	int raw_fd;
-	sf_count_t trun_frames = 0;
-	sf_count_t dst_frames;
-	SRC_DATA rate_change;
-	espeak_ERROR espk_error;
-	float *src_buff, *dst_buff;
-	char *mydata;
-	const char *cachedir = DEF_DIR;
-	const char *temp;
-	int usecache = 0;
-	int writecache = 0;
-	char MD5_name[33] = "";
-	char cachefile[MAXLEN] = "";
-	char raw_name[17] = "/tmp/espk_XXXXXX";
-	char slin_name[23];
-	int sample_rate;
-	double target_sample_rate = DEF_RATE;
-	int speed = DEF_SPEED;
-	int volume = DEF_VOLUME;
-	int wordgap = DEF_WORDGAP;
-	int pitch = DEF_PITCH;
-	int capind = DEF_CAPIND;
-	const char *voice = DEF_VOICE;
 	struct ast_config *cfg;
 	struct ast_flags config_flags = { 0 };
-	AST_DECLARE_APP_ARGS(args,
-		AST_APP_ARG(text);
-		AST_APP_ARG(interrupt);
-		AST_APP_ARG(language);
-	);
-
-	if (ast_strlen_zero(data)) {
-		ast_log(LOG_ERROR, "eSpeak requires arguments (text and options)\n");
-		return -1;
-	}
+	const char *temp;
+	/* Setting defaut config values */
+	cachedir = DEF_DIR;
+	usecache = 0;
+	target_sample_rate = DEF_RATE;
+	speed = DEF_SPEED;
+	volume = DEF_VOLUME;
+	wordgap = DEF_WORDGAP;
+	pitch = DEF_PITCH;
+	capind = DEF_CAPIND;
+	def_voice = DEF_VOICE;
 
 	cfg = ast_config_load(ESPEAK_CONFIG, config_flags);
 
@@ -152,7 +127,58 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 			capind = atoi(temp);
 
 		if ((temp = ast_variable_retrieve(cfg, "voice", "voice")))
-			voice = temp;
+			def_voice = temp;
+	}
+	
+	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
+		ast_log(LOG_WARNING,
+				"eSpeak: Unsupported sample rate: %lf. Falling back to %d\n",
+				target_sample_rate, DEF_RATE);
+		target_sample_rate = DEF_RATE;
+	}
+	ast_config_destroy(cfg);
+	return 0;
+}
+
+/* espeak synthesis callback function */
+static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
+{
+	if (wav) {
+		if (fwrite(wav, sizeof(short), numsamples, events[0].user_data))
+			return 0; /* Continue synthesis */
+	}
+	return 1; /* Stop synthesis */
+}
+
+static int espeak_exec(struct ast_channel *chan, const char *data)
+{
+	int res = 0;
+	SNDFILE *src_file;
+	SF_INFO src_info;
+	FILE *fl;
+	int raw_fd;
+	sf_count_t trun_frames = 0;
+	sf_count_t dst_frames;
+	SRC_DATA rate_change;
+	espeak_ERROR espk_error;
+	float *src_buff, *dst_buff;
+	char *mydata;
+	int writecache = 0;
+	char MD5_name[33] = "";
+	char cachefile[MAXLEN] = "";
+	char raw_name[17] = "/tmp/espk_XXXXXX";
+	char slin_name[23];
+	int sample_rate;
+	const char *voice;
+	AST_DECLARE_APP_ARGS(args,
+		AST_APP_ARG(text);
+		AST_APP_ARG(interrupt);
+		AST_APP_ARG(language);
+	);
+
+	if (ast_strlen_zero(data)) {
+		ast_log(LOG_ERROR, "eSpeak requires arguments (text and options)\n");
+		return -1;
 	}
 
 	mydata = ast_strdupa(data);
@@ -161,21 +187,16 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	if (args.interrupt && !strcasecmp(args.interrupt, "any"))
 		args.interrupt = AST_DIGIT_ANY;
 
-	if (!ast_strlen_zero(args.language))
+	if (!ast_strlen_zero(args.language)) {
 		voice = args.language;
-
-	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
-		ast_log(LOG_WARNING,
-				"eSpeak: Unsupported sample rate: %lf. Falling back to %d\n",
-				target_sample_rate, DEF_RATE);
-		target_sample_rate = DEF_RATE;
+	} else {
+		voice = def_voice;
 	}
 
 	args.text = ast_strip_quoted(args.text, "\"", "\"");
 
 	if (ast_strlen_zero(args.text)) {
 		ast_log(LOG_WARNING, "eSpeak: No text passed for synthesis.\n");
-		ast_config_destroy(cfg);
 		return res;
 	}
 
@@ -203,7 +224,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 				} else {
 					res = ast_waitstream(chan, args.interrupt);
 					ast_stopstream(chan);
-					ast_config_destroy(cfg);
 					return res;
 				}
 			}
@@ -215,7 +235,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	if (sample_rate == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
-		ast_config_destroy(cfg);
 		return -1;
 	}
 	espeak_SetSynthCallback(synth_callback);
@@ -230,14 +249,12 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	if (raw_fd == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to create audio file.\n");
-		ast_config_destroy(cfg);
 		return -1;
 	}
 
 	fl = fdopen(raw_fd, "w+");
 	if (fl == NULL) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to open audio file '%s'\n", raw_name);
-		ast_config_destroy(cfg);
 		return -1;
 	}
 
@@ -249,7 +266,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	if (espk_error != EE_OK) {
 		ast_log(LOG_ERROR,
 				"eSpeak: Failed to synthesize speech for the specified text.\n");
-		ast_config_destroy(cfg);
 		ast_filedelete(raw_name, NULL);
 		return -1;
 	}
@@ -263,7 +279,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		src_file = sf_open(raw_name, SFM_RDWR, &src_info);
 		if (src_file == NULL) {
 			ast_log(LOG_ERROR, "eSpeak: Failed to read raw audio data '%s'\n", raw_name);
-			ast_config_destroy(cfg);
 			ast_filedelete(raw_name, NULL);
 			return -1;
 		}
@@ -283,7 +298,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		if (res) {
 			ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n",
 					raw_name, src_strerror(res));
-			ast_config_destroy(cfg);
 			sf_close(src_file);
 			ast_free(src_buff);
 			ast_free(dst_buff);
@@ -324,7 +338,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 
 	ast_filedelete(raw_name, NULL);
-	ast_config_destroy(cfg);
 	return res;
 }
 
@@ -335,8 +348,14 @@ static int unload_module(void)
 
 static int load_module(void)
 {
+	read_config();
 	return ast_register_application(app, espeak_exec, synopsis, descrip) ?
 		AST_MODULE_LOAD_DECLINE : AST_MODULE_LOAD_SUCCESS;
+
 }
 
-AST_MODULE_INFO_STANDARD(ASTERISK_GPL_KEY, "eSpeak TTS Interface");
+AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "eSpeak TTS Interface",
+		.load = load_module,
+		.unload = unload_module,
+		.reload = read_config,
+			);
