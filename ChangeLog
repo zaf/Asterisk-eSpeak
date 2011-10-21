@@ -1,6 +1,6 @@
 2011-21-10 Lefteris Zafiris <zaf.000@gmail.com> - 2.1rc4
 	Changed config file handling. Config values are 
-	readed once during module loading. Added option for
+	read once during module loading. Added option for
 	module reload that re-reads the config values. 
 	Makefile updates.
 

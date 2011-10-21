@@ -69,6 +69,8 @@ static char *descrip =
 	"the user, allowing any given interrupt keys to immediately terminate\n"
 	"and return.\n";
 
+static struct ast_config *cfg;
+static struct ast_flags config_flags = { 0 };
 static const char *cachedir;
 static int usecache;
 static double target_sample_rate;
@@ -81,8 +83,6 @@ static const char *def_voice;
 
 static int read_config(void)
 {
-	struct ast_config *cfg;
-	struct ast_flags config_flags = { 0 };
 	const char *temp;
 	/* Setting defaut config values */
 	cachedir = DEF_DIR;
@@ -136,7 +136,6 @@ static int read_config(void)
 				target_sample_rate, DEF_RATE);
 		target_sample_rate = DEF_RATE;
 	}
-	ast_config_destroy(cfg);
 	return 0;
 }
 
@@ -341,8 +340,16 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	return res;
 }
 
+static int reload(void)
+{
+	ast_config_destroy(cfg);
+	read_config();
+	return 0;
+}
+
 static int unload_module(void)
 {
+	ast_config_destroy(cfg);
 	return ast_unregister_application(app);
 }
 
@@ -351,11 +358,10 @@ static int load_module(void)
 	read_config();
 	return ast_register_application(app, espeak_exec, synopsis, descrip) ?
 		AST_MODULE_LOAD_DECLINE : AST_MODULE_LOAD_SUCCESS;
-
 }
 
 AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "eSpeak TTS Interface",
 		.load = load_module,
 		.unload = unload_module,
-		.reload = read_config,
+		.reload = reload,
 			);
