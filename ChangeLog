@@ -1,3 +1,6 @@
+2011-11-11 Lefteris Zafiris <zaf.000@gmail.com> -2.1
+	Released stable version 2.1
+
 2011-21-10 Lefteris Zafiris <zaf.000@gmail.com> - 2.1rc4
 	Changed config file handling. Config values are 
 	read once during module loading. Added option for

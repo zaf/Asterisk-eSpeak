@@ -60,6 +60,8 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 /* libsndfile formats */
 #define RAW_PCM_S16LE 262146
 #define WAV_PCM_S16LE 65538
+/* espeak buffer size in msec */
+#define ESPK_BUFFER 2000
 
 static char *app = "eSpeak";
 static char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
@@ -230,7 +232,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 
 	/* Invoke eSpeak */
-	sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 2000, NULL, 0);
+	sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0);
 
 	if (sample_rate == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
