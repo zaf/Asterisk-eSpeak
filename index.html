@@ -6,7 +6,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 
 	<title>eSpeak module for Asterisk PBX</title>
-    <meta name="description=" content="Module for the Asterisk PBX which allows you to use the eSpeak voice synthesis engine to render text to speech.">
+    <meta name="description" content="Module for the Asterisk PBX which allows you to use the eSpeak voice synthesis engine to render text to speech.">
 	
 	<style type="text/css">
 		body {
@@ -72,7 +72,7 @@ send a text string, get back the resulting waveform and play it to
 the user, allowing any given interrupt keys to immediately terminate
 and return.</p>
 <p>Asterisk dialplan example:<br /><br />
-;eSpeak Demo<br />
+<pre>;eSpeak Demo<br />
 exten => 1234,1,Answer()<br />
 ;;Play mesage using default language as set in espeak.conf<br />
 exten => 1234,n,Espeak("This is a simple espeak test in english.",any)<br />
@@ -84,7 +84,7 @@ exten => 1234,n,Espeak("Αυτό είναι ένα απλό τέστ του espe
 ;;and play it with espeak using the asterisk channel language.<br />
 exten => 1234,n,ReadFile(MYTEXT=/path/${LANGUAGE}/myfile,200)<br />
 exten => 1234,n,Espeak("${MYTEXY}",any,${LANGUAGE})<br />
-exten => 1234,n,Hangup()</p>
+exten => 1234,n,Hangup()</p></pre>
 <h2>License</h2>
 <p>The eSpeak module for asterisk is distributed under the GNU General Public License v2</p>
 <h2>Authors</h2>
