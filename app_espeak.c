@@ -131,7 +131,7 @@ static int read_config(void)
 		if ((temp = ast_variable_retrieve(cfg, "voice", "voice")))
 			def_voice = temp;
 	}
-	
+
 	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
 		ast_log(LOG_WARNING,
 				"eSpeak: Unsupported sample rate: %lf. Falling back to %d\n",

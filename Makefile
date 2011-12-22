@@ -21,16 +21,16 @@ CC=gcc
 OPTIMIZE=-O2
 DEBUG=-g
 
-LIBS+=-lm -lespeak -lsndfile -lsamplerate
+LIBS+=-lespeak -lsndfile -lsamplerate
 CFLAGS+=-pipe -fPIC -Wall -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE
 
 all: _all
-	@echo " +-------- app_espeak Build Complete --------+"  
-	@echo " + app_espeak has successfully been built,   +"  
+	@echo " +-------- app_espeak Build Complete --------+"
+	@echo " + app_espeak has successfully been built,   +"
 	@echo " + and can be installed by running:          +"
 	@echo " +                                           +"
-	@echo " +               make install                +"  
-	@echo " +-------------------------------------------+" 
+	@echo " +               make install                +"
+	@echo " +-------------------------------------------+"
 
 _all: app_espeak.so
 
@@ -46,10 +46,10 @@ clean:
 install: _all
 	$(INSTALL) -m 755 -d $(DESTDIR)$(MODULES_DIR)
 	$(INSTALL) -m 755 app_espeak.so $(DESTDIR)$(MODULES_DIR)
-	@echo " +---- app_espeak Installation Complete -----+"  
+	@echo " +---- app_espeak Installation Complete -----+"
 	@echo " +                                           +"
-	@echo " + app_espeak has successfully been installed+"  
-	@echo " + If you would like to install the sample   +"  
+	@echo " + app_espeak has successfully been installed+"
+	@echo " + If you would like to install the sample   +"
 	@echo " + configuration file run:                   +"
 	@echo " +                                           +"
 	@echo " +              make samples                 +"
