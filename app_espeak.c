@@ -216,12 +216,12 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 				writecache = 1;
 			} else {
 				ast_debug(1, "eSpeak: Cache file exists.\n");
-				if (chan->_state != AST_STATE_UP)
+				if (ast_channel_state(chan) != AST_STATE_UP)
 					ast_answer(chan);
-				res = ast_streamfile(chan, cachefile, chan->language);
+				res = ast_streamfile(chan, cachefile, ast_channel_language(chan));
 				if (res) {
 					ast_log(LOG_ERROR, "eSpeak: ast_streamfile from cache failed on %s\n",
-							chan->name);
+							ast_channel_name(chan));
 				} else {
 					res = ast_waitstream(chan, args.interrupt);
 					ast_stopstream(chan);
@@ -328,11 +328,11 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		ast_filecopy(raw_name, cachefile, NULL);
 	}
 
-	if (chan->_state != AST_STATE_UP)
+	if (ast_channel_state(chan) != AST_STATE_UP)
 		ast_answer(chan);
-	res = ast_streamfile(chan, raw_name, chan->language);
+	res = ast_streamfile(chan, raw_name, ast_channel_language(chan));
 	if (res) {
-		ast_log(LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n", chan->name);
+		ast_log(LOG_ERROR, "eSpeak: ast_streamfile failed on %s\n", ast_channel_name(chan));
 	} else {
 		res = ast_waitstream(chan, args.interrupt);
 		ast_stopstream(chan);
@@ -363,7 +363,7 @@ static int load_module(void)
 }
 
 AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "eSpeak TTS Interface",
-		.load = load_module,
-		.unload = unload_module,
-		.reload = reload,
-			);
+	.load = load_module,
+	.unload = unload_module,
+	.reload = reload,
+);
