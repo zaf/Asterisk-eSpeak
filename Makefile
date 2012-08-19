@@ -22,7 +22,7 @@ OPTIMIZE=-O2
 DEBUG=-g
 
 LIBS+=-lespeak -lsndfile -lsamplerate
-CFLAGS+=-pipe -fPIC -Wall -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE
+CFLAGS+=-pipe -fPIC -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE
 
 all: _all
 	@echo " +-------- app_espeak Build Complete --------+"
