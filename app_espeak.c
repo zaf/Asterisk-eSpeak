@@ -1,7 +1,7 @@
 /*
  * Asterisk -- An open source telephony toolkit.
  *
- * Copyright (C) 2009 - 2011, Lefteris Zafiris
+ * Copyright (C) 2009 - 2012, Lefteris Zafiris
  *
  * Lefteris Zafiris <zaf.000@gmail.com>
  *
@@ -39,13 +39,11 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 #include <espeak/speak_lib.h>
 #include <sndfile.h>
 #include <samplerate.h>
-#include "asterisk/file.h"
+#include "asterisk/app.h"
 #include "asterisk/channel.h"
 #include "asterisk/module.h"
 #include "asterisk/config.h"
-#include "asterisk/app.h"
 #include "asterisk/utils.h"
-#include "asterisk/strings.h"
 
 #define AST_MODULE "eSpeak"
 #define ESPEAK_CONFIG "espeak.conf"
@@ -157,7 +155,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	float *src_buff, *dst_buff;
 	char *mydata;
 	int writecache = 0;
-	char MD5_name[33];
 	char cachefile[MAXLEN];
 	char raw_name[17] = "/tmp/espk_XXXXXX";
 	char slin_name[23];
@@ -197,6 +194,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	/*Cache mechanism */
 	if (usecache) {
+		char MD5_name[33];
 		ast_md5_hash(MD5_name, args.text);
 		if (strlen(cachedir) + strlen(MD5_name) + 6 <= MAXLEN) {
 			ast_debug(1, "eSpeak: Activating cache mechanism...\n");
