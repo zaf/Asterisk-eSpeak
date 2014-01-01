@@ -55,7 +55,7 @@ dialplan sample code for your extensions.conf
   			;;Read a text file from disk (relative to the channel language)
   			;;and play it with espeak using the asterisk channel language.
   		exten => 1234,n,ReadFile(MYTEXT=/path/${LANGUAGE}/myfile,200)
-  		exten => 1234,n,Espeak("${MYTEXY}",any,${LANGUAGE})
+  		exten => 1234,n,Espeak("${MYTEXT}",any,${LANGUAGE})
   		exten => 1234,n,Hangup()
   		
 -------
