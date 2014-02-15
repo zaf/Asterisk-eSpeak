@@ -5,7 +5,7 @@
 This provides the "Espeak" dialplan application, which allows you to use
 the Espeak speech synthesizer with Asterisk. This module invokes the Espeak TTS engine
 locally, and uses it to render text to speech.
-It works with asterisk versions 1.6, 1.8, 10
+It works with asterisk versions 1.6 or later
 
 ------------
 Requirements
@@ -13,8 +13,8 @@ Requirements
 Asterisk header files
 Espeak libraries and header files
 	**It is recommended to use espeak version 1.41.01 or newer.
-	Earlier version of epseak had an file descriptor leak that could 
-	cause asterisk to crash. If upgrading is not an option patch your current 
+	Earlier version of epseak had an file descriptor leak that could
+	cause asterisk to crash. If upgrading is not an option patch your current
 	version of epseak with the espeak.patch provided here.
 libsndfile libraries and header files
 libsamplerate libraries and header files
@@ -39,11 +39,11 @@ send a text string, get back the resulting waveform and play it to
 the user, allowing any given interrupt keys to immediately terminate
 and return.
 
---------  
+--------
 Examples
 --------
 dialplan sample code for your extensions.conf
-  
+
 ;Espeak Demo
   		exten => 1234,1,Answer()
   			;;Play mesage using default language as set in espeak.conf
@@ -57,9 +57,14 @@ dialplan sample code for your extensions.conf
   		exten => 1234,n,ReadFile(MYTEXT=/path/${LANGUAGE}/myfile,200)
   		exten => 1234,n,Espeak("${MYTEXT}",any,${LANGUAGE})
   		exten => 1234,n,Hangup()
-  		
+
 -------
 License
 -------
-The Espeak module for asterisk is distributed under the GNU General Public 
+The Espeak module for asterisk is distributed under the GNU General Public
 License v2. See COPYING for details.
+
+--------
+Homepage
+--------
+http://zaf.github.io/Asterisk-eSpeak/
