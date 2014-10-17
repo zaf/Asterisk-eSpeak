@@ -62,9 +62,9 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 /* espeak buffer size in msec */
 #define ESPK_BUFFER 2000
 
-static char *app = "eSpeak";
-static char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
-static char *descrip =
+static const char *app = "eSpeak";
+static const char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
+static const char *descrip =
 	"  eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,\n"
 	"send a text string, get back the resulting waveform and play it to\n"
 	"the user, allowing any given interrupt keys to immediately terminate\n"
@@ -106,18 +106,48 @@ static int read_config(const char *espeak_conf)
 			usecache = ast_true(temp);
 		if ((temp = ast_variable_retrieve(cfg, "general", "cachedir")))
 			cachedir = temp;
-		if ((temp = ast_variable_retrieve(cfg, "general", "samplerate")))
+		if ((temp = ast_variable_retrieve(cfg, "general", "samplerate"))) {
 			target_sample_rate = (int) strtol(temp, NULL, 10);
-		if ((temp = ast_variable_retrieve(cfg, "voice", "speed")))
+			if (errno == ERANGE) {
+				ast_log(LOG_WARNING, "eSpeak: Error reading samplerate from config file\n");
+				target_sample_rate = DEF_RATE;
+			}
+		}
+		if ((temp = ast_variable_retrieve(cfg, "voice", "speed"))) {
 			speed = (int) strtol(temp, NULL, 10);
-		if ((temp = ast_variable_retrieve(cfg, "voice", "wordgap")))
+			if (errno == ERANGE) {
+				ast_log(LOG_WARNING, "eSpeak: Error reading voice speed from config file\n");
+				speed = DEF_SPEED;
+			}
+		}
+		if ((temp = ast_variable_retrieve(cfg, "voice", "wordgap"))) {
 			wordgap = (int) strtol(temp, NULL, 10);
-		if ((temp = ast_variable_retrieve(cfg, "voice", "volume")))
+			if (errno == ERANGE) {
+				ast_log(LOG_WARNING, "eSpeak: Error reading wordgap from config file\n");
+				wordgap = DEF_WORDGAP;
+			}
+		}
+		if ((temp = ast_variable_retrieve(cfg, "voice", "volume"))) {
 			volume = (int) strtol(temp, NULL, 10);
-		if ((temp = ast_variable_retrieve(cfg, "voice", "pitch")))
+			if (errno == ERANGE) {
+				ast_log(LOG_WARNING, "eSpeak: Error reading volume from config file\n");
+				volume = DEF_VOLUME;
+			}
+		}
+		if ((temp = ast_variable_retrieve(cfg, "voice", "pitch"))) {
 			pitch = (int) strtol(temp, NULL, 10);
-		if ((temp = ast_variable_retrieve(cfg, "voice", "capind")))
+			if (errno == ERANGE) {
+				ast_log(LOG_WARNING, "eSpeak: Error reading pitch from config file\n");
+				pitch = DEF_PITCH;
+			}
+		}
+		if ((temp = ast_variable_retrieve(cfg, "voice", "capind"))) {
 			capind = (int) strtol(temp, NULL, 10);
+			if (errno == ERANGE) {
+				ast_log(LOG_WARNING, "eSpeak: Error reading capind from config file\n");
+				capind = DEF_CAPIND;
+			}
+		}
 		if ((temp = ast_variable_retrieve(cfg, "voice", "voice")))
 			def_voice = temp;
 	}
