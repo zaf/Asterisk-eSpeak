@@ -1,6 +1,6 @@
 #
 # Makefile for Asterisk espeak application
-# Copyright (C) 2009 - 2011, Lefteris Zafiris
+# Copyright (C) 2009 - 2015, Lefteris Zafiris
 #
 # This program is free software, distributed under the terms of
 # the GNU General Public License Version 2. See the COPYING file

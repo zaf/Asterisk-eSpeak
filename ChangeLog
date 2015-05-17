@@ -1,3 +1,8 @@
+2015-05-17 Lefteris Zafiris <zaf.000@gmail.com> - 2.2
+	Released stable version 2.2
+	Code cleanups. Better error handling in config file
+	parsing.
+
 2012-08-19 Lefteris Zafiris <zaf.000@gmail.com> - 2.2-rc1
 	Fixed compatibility with asterisk 11
 	Minor code cleanups and fixes.

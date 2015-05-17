@@ -1,7 +1,7 @@
 /*
  * Asterisk -- An open source telephony toolkit.
  *
- * Copyright (C) 2009 - 2014, Lefteris Zafiris
+ * Copyright (C) 2009 - 2015, Lefteris Zafiris
  *
  * Lefteris Zafiris <zaf.000@gmail.com>
  *
