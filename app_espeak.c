@@ -174,15 +174,9 @@ static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
 static int espeak_exec(struct ast_channel *chan, const char *data)
 {
 	int res = 0;
-	SNDFILE *src_file;
-	SF_INFO src_info;
 	FILE *fl;
 	int raw_fd;
-	sf_count_t trun_frames = 0;
-	sf_count_t dst_frames;
-	SRC_DATA rate_change;
 	espeak_ERROR espk_error;
-	float *src_buff, *dst_buff;
 	char *mydata;
 	int writecache = 0;
 	char cachefile[MAXLEN];
@@ -302,7 +296,13 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	/* Resample sound file */
 	if (sample_rate != target_sample_rate) {
-		memset(&src_info, 0, sizeof(src_info));
+		SNDFILE *src_file;
+		SF_INFO src_info;
+		float *src_buff, *dst_buff;
+		sf_count_t trun_frames = 0;
+		sf_count_t dst_frames;
+		SRC_DATA rate_change;
+
 		src_info.samplerate = (int) sample_rate;
 		src_info.channels = 1;
 		src_info.format = RAW_PCM_S16LE;
