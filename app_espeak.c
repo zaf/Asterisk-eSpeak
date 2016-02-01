@@ -255,12 +255,30 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		return -1;
 	}
 	espeak_SetSynthCallback(synth_callback);
-	espeak_SetVoiceByName(voice);
-	espeak_SetParameter(espeakRATE, speed, 0);
-	espeak_SetParameter(espeakVOLUME, volume, 0);
-	espeak_SetParameter(espeakWORDGAP, wordgap, 0);
-	espeak_SetParameter(espeakPITCH, pitch, 0);
-	espeak_SetParameter(espeakCAPITALS, capind, 0);
+	if ( espeak_SetVoiceByName(voice) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set voice=%s.\n", voice);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakRATE, speed, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set speed=%d.\n", speed);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakVOLUME, volume, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set volume=%d.\n", volume);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakWORDGAP, wordgap, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set wordgap=%d.\n", wordgap);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakPITCH, pitch, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set pitch=%d.\n", pitch);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakCAPITALS, capind, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set capind=%d.\n", capind);
+		return -1;
+	}
 
 	if ((raw_fd = mkstemp(raw_name)) == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to create audio file.\n");
