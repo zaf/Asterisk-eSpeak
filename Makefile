@@ -21,7 +21,7 @@ CC=gcc
 OPTIMIZE=-O2
 DEBUG=-g
 
-LIBS+=-lespeak -lsndfile -lsamplerate
+LIBS+=-lespeak -lsamplerate
 CFLAGS+=-pipe -fPIC -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE
 
 all: _all

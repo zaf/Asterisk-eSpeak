@@ -1,7 +1,7 @@
 /*
  * Asterisk -- An open source telephony toolkit.
  *
- * Copyright (C) 2009 - 2015, Lefteris Zafiris
+ * Copyright (C) 2009 - 2016, Lefteris Zafiris
  *
  * Lefteris Zafiris <zaf.000@gmail.com>
  *
@@ -36,8 +36,8 @@
 ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <espeak/speak_lib.h>
-#include <sndfile.h>
 #include <samplerate.h>
 #include "asterisk/app.h"
 #include "asterisk/channel.h"
@@ -47,7 +47,7 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 
 #define AST_MODULE "eSpeak"
 #define ESPEAK_CONFIG "espeak.conf"
-#define MAXLEN 2048
+#define MAXLEN 4096
 #define DEF_RATE 8000
 #define DEF_SPEED 150
 #define DEF_VOLUME 100
@@ -56,11 +56,7 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 00 $")
 #define DEF_CAPIND 0
 #define DEF_VOICE "default"
 #define DEF_DIR "/tmp"
-/* libsndfile formats */
-#define RAW_PCM_S16LE 262146
-#define WAV_PCM_S16LE 65538
-/* espeak buffer size in msec */
-#define ESPK_BUFFER 2000
+#define ESPK_BUFFER 2048
 
 static const char *app = "eSpeak";
 static const char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
@@ -171,13 +167,93 @@ static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
 	return 1; /* Stop synthesis */
 }
 
+/* Sound data resampling */
+static int raw_resample(char *fname, double ratio)
+{
+	int res = 0;
+	FILE *fl;
+	struct stat st;
+	int in_size;
+	short *in_buff, *out_buff;
+	long in_frames, out_frames;
+	float *inp, *outp;
+	SRC_DATA rate_change;
+
+	if ((fl = fopen(fname, "r")) == NULL) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to open file for resampling.\n");
+		return -1;
+	}
+	if ((stat(fname, &st) == -1)) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to stat file for resampling.\n");
+		fclose(fl);
+		return -1;
+	}
+	in_size = st.st_size;
+	if ((in_buff = ast_malloc(in_size)) == NULL) {
+		fclose(fl);
+		return -1;
+	}
+	if ((fread(in_buff, 1, in_size, fl) != (size_t)in_size)) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to read file for resampling.\n");
+		fclose(fl);
+		res = -1;
+		goto CLEAN1;
+	}
+	fclose(fl);
+	in_frames = in_size / 2;
+
+	if ((inp = (float *)(ast_malloc(in_frames * sizeof(float)))) == NULL) {
+		res = -1;
+		goto CLEAN1;
+	}
+	src_short_to_float_array(in_buff, inp, in_size/sizeof(short));
+	out_frames = (long)((double)in_frames * ratio);
+	if ((outp = (float *)(ast_malloc(out_frames * sizeof(float)))) == NULL) {
+		res = -1;
+		goto CLEAN2;
+	}
+	rate_change.data_in = inp;
+	rate_change.data_out = outp;
+	rate_change.input_frames = in_frames;
+	rate_change.output_frames = out_frames;
+	rate_change.src_ratio = ratio;
+
+	if ((res = src_simple(&rate_change, SRC_SINC_FASTEST, 1)) != 0) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n",
+				fname, src_strerror(res));
+		res = -1;
+		goto CLEAN3;
+	}
+
+	if ((out_buff = ast_malloc(out_frames*sizeof(float))) == NULL) {
+		res = -1;
+		goto CLEAN3;
+	}
+	src_float_to_short_array(rate_change.data_out, out_buff, out_frames);
+	if ((fl = fopen(fname, "w+")) != NULL) {
+		fwrite(out_buff, 1, 2*out_frames, fl);
+		fclose(fl);
+	} else {
+		ast_log(LOG_ERROR, "eSpeak: Failed to open output file for resampling.\n");
+		res = -1;
+	}
+	ast_free(out_buff);
+CLEAN3:
+	ast_free(outp);
+CLEAN2:
+	ast_free(inp);
+CLEAN1:
+	ast_free(in_buff);
+	return res;
+}
+
 static int espeak_exec(struct ast_channel *chan, const char *data)
 {
 	int res = 0;
 	FILE *fl;
 	int raw_fd;
 	espeak_ERROR espk_error;
-	char *mydata;
+	char *mydata, *format;
 	int writecache = 0;
 	char cachefile[MAXLEN];
 	char raw_name[17] = "/tmp/espk_XXXXXX";
@@ -290,78 +366,26 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	if (espk_error != EE_OK) {
 		ast_log(LOG_ERROR,
 				"eSpeak: Failed to synthesize speech for the specified text.\n");
-		ast_filedelete(raw_name, NULL);
+		unlink(raw_name);
 		return -1;
 	}
 
 	/* Resample sound file */
 	if (sample_rate != target_sample_rate) {
-		SNDFILE *src_file;
-		SF_INFO src_info;
-		float *src_buff, *dst_buff;
-		sf_count_t trun_frames = 0;
-		sf_count_t dst_frames;
-		SRC_DATA rate_change;
-
-		src_info.samplerate = (int) sample_rate;
-		src_info.channels = 1;
-		src_info.format = RAW_PCM_S16LE;
-		if ((src_file = sf_open(raw_name, SFM_RDWR, &src_info)) == NULL) {
-			ast_log(LOG_ERROR, "eSpeak: Failed to read raw audio data '%s'\n", raw_name);
-			ast_filedelete(raw_name, NULL);
+		double ratio = (double) target_sample_rate / (double) sample_rate;
+		if ((res = raw_resample(raw_name, ratio)) != 0) {
 			return -1;
 		}
-		if ((src_buff = (float *) ast_malloc(src_info.frames * sizeof(float))) == NULL) {
-			ast_log(LOG_ERROR, "eSpeak: Failed to allocate memory for resampling.\n");
-			sf_close(src_file);
-			return -1;
-		}
-		sf_readf_float(src_file, src_buff, src_info.frames);
-		dst_frames = src_info.frames * (sf_count_t) target_sample_rate / (sf_count_t) sample_rate;
-		if ((dst_buff = (float *) ast_malloc(dst_frames * sizeof(float))) == NULL) {
-			ast_log(LOG_ERROR, "eSpeak: Failed to allocate memory for resampling.\n");
-			sf_close(src_file);
-			ast_free(src_buff);
-			return -1;
-		}
-		rate_change.data_in = src_buff;
-		rate_change.data_out = dst_buff;
-		rate_change.input_frames = src_info.frames;
-		rate_change.output_frames = dst_frames;
-		rate_change.src_ratio = (double) (target_sample_rate / sample_rate);
-
-		res = src_simple(&rate_change, SRC_SINC_FASTEST, 1);
-		if (res) {
-			ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n",
-					raw_name, src_strerror(res));
-			sf_close(src_file);
-			ast_free(src_buff);
-			ast_free(dst_buff);
-			ast_filedelete(raw_name, NULL);
-			return -1;
-		}
-		src_info.frames = dst_frames;
-		src_info.samplerate = target_sample_rate;
-		sf_command(src_file, SFC_FILE_TRUNCATE, &trun_frames, sizeof(trun_frames));
-		sf_writef_float(src_file, dst_buff, src_info.frames);
-		sf_write_sync(src_file);
-		sf_close(src_file);
-		ast_free(src_buff);
-		ast_free(dst_buff);
 	}
 
 	/* Create filenames */
-	if (target_sample_rate == 8000)
-		snprintf(slin_name, sizeof(slin_name), "%s.sln", raw_name);
-	if (target_sample_rate == 16000)
-		snprintf(slin_name, sizeof(slin_name), "%s.sln16", raw_name);
-	rename(raw_name, slin_name);
-
-	/* Save file to cache if set */
-	if (writecache) {
-		ast_debug(1, "eSpeak: Saving cache file %s\n", cachefile);
-		ast_filecopy(raw_name, cachefile, NULL);
+	if (target_sample_rate == 16000) {
+		format = "sln16";
+	} else {
+		format = "sln";
 	}
+	snprintf(slin_name, sizeof(slin_name), "%s.%s", raw_name, format);
+	rename(raw_name, slin_name);
 
 	if (ast_channel_state(chan) != AST_STATE_UP)
 		ast_answer(chan);
@@ -373,7 +397,13 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		ast_stopstream(chan);
 	}
 
-	ast_filedelete(raw_name, NULL);
+	/* Save file to cache if set */
+	if (writecache) {
+		ast_debug(1, "eSpeak: Saving cache file %s\n", cachefile);
+		ast_filerename(raw_name, cachefile, format);
+	} else {
+		unlink(slin_name);
+	}
 	return res;
 }
 

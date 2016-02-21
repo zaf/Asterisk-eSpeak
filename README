@@ -16,7 +16,6 @@ Espeak libraries and header files
 	Earlier version of epseak had an file descriptor leak that could
 	cause asterisk to crash. If upgrading is not an option patch your current
 	version of epseak with the espeak.patch provided here.
-libsndfile libraries and header files
 libsamplerate libraries and header files
 
 
