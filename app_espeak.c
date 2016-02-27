@@ -231,7 +231,10 @@ static int raw_resample(char *fname, double ratio)
 	}
 	src_float_to_short_array(rate_change.data_out, out_buff, out_frames);
 	if ((fl = fopen(fname, "w+")) != NULL) {
-		fwrite(out_buff, 1, 2*out_frames, fl);
+		if ((fwrite(out_buff, 1, 2*out_frames, fl)) != (size_t)(2*out_frames)) {
+			ast_log(LOG_ERROR, "eSpeak: Failed to write resampled output file.\n");
+			res = -1;
+		}
 		fclose(fl);
 	} else {
 		ast_log(LOG_ERROR, "eSpeak: Failed to open output file for resampling.\n");
