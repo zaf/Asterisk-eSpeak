@@ -1,3 +1,8 @@
+2016-03-19 Lefteris Zafiris <zaf.000@gmail.com> - 3.0
+	Removed the dependency to libsndfile.
+	Better error checking during espeak initialisation.
+	Better handling of temp files.
+
 2015-05-17 Lefteris Zafiris <zaf.000@gmail.com> - 2.2
 	Released stable version 2.2
 	Code cleanups. Better error handling in config file
