@@ -13,7 +13,7 @@ Requirements
 Asterisk header files
 Espeak libraries and header files
 	**It is recommended to use espeak version 1.41.01 or newer.
-	Earlier version of epseak had an file descriptor leak that could
+	Earlier versions of epseak had a file descriptor leak that could
 	cause asterisk to crash. If upgrading is not an option patch your current
 	version of epseak with the espeak.patch provided here.
 libsamplerate libraries and header files
@@ -25,8 +25,7 @@ Installation
 $ make
 $ make install
 
-To install the sample configuration file, issue the following command after
-the 'make install' command:
+To install the sample configuration file, issue the following command:
 
 $ make samples
 
