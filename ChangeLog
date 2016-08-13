@@ -1,50 +1,50 @@
-2016-03-19 Lefteris Zafiris <zaf.000@gmail.com> - 3.0
+2016-03-19 Lefteris Zafiris <zaf@fastmail.com> - 3.0
 	Removed the dependency to libsndfile.
 	Better error checking during espeak initialisation.
 	Better handling of temp files.
 
-2015-05-17 Lefteris Zafiris <zaf.000@gmail.com> - 2.2
+2015-05-17 Lefteris Zafiris <zaf@fastmail.com> - 2.2
 	Released stable version 2.2
 	Code cleanups. Better error handling in config file
 	parsing.
 
-2012-08-19 Lefteris Zafiris <zaf.000@gmail.com> - 2.2-rc1
+2012-08-19 Lefteris Zafiris <zaf@fastmail.com> - 2.2-rc1
 	Fixed compatibility with asterisk 11
 	Minor code cleanups and fixes.
 
-2011-11-11 Lefteris Zafiris <zaf.000@gmail.com> - 2.1
+2011-11-11 Lefteris Zafiris <zaf@fastmail.com> - 2.1
 	Released stable version 2.1
 
-2011-10-21 Lefteris Zafiris <zaf.000@gmail.com> - 2.1-rc4
+2011-10-21 Lefteris Zafiris <zaf@fastmail.com> - 2.1-rc4
 	Changed config file handling. Config values are
 	read once during module loading. Added option for
 	module reload that re-reads the config values.
 	Makefile updates.
 
-2011-09-03 Lefteris Zafiris <zaf.000@gmail.com> - 2.1-rc3
+2011-09-03 Lefteris Zafiris <zaf@fastmail.com> - 2.1-rc3
 	Changed output file format to raw signed lineral. This
 	adds support for 16kHz sound playback in asterisk 1.6.
 	Added checks for text input length.
 
-2011-09-03 Lefteris Zafiris <zaf.000@gmail.com> - 2.1-rc2
+2011-09-03 Lefteris Zafiris <zaf@fastmail.com> - 2.1-rc2
 	Better error handling.
 	Using mkstemps() for safer temp file name generation,
 	instead of ast_random().
 	Using ast_malloc() instead of malloc().
 	Increased internal espeak synth buffer to 2sec.
 
-2011-08-27 Lefteris Zafiris <zaf.000@gmail.com> - 2.1-rc1
+2011-08-27 Lefteris Zafiris <zaf@fastmail.com> - 2.1-rc1
 	Switched to libsamplerate for resampling. Resampling
 	now is much faster.
 	Major code cleanup.
 
-2011-08-19 Lefteris Zafiris <zaf.000@gmail.com> - 2.0
+2011-08-19 Lefteris Zafiris <zaf@fastmail.com> - 2.0
     Added option for generating 16000Hz sound files.
 
-2009-11-06 Lefteris Zafiris <zaf.000@gmail.com> - 1.6.0.1
+2009-11-06 Lefteris Zafiris <zaf@fastmail.com> - 1.6.0.1
 	Released as stable.
 	Fixed a bug in argument parsing that could
 	cause asterisk to crash.
 
-2009-09-02 Lefteris Zafiris <zaf.000@gmail.com> - 1.6-0.1-beta
+2009-09-02 Lefteris Zafiris <zaf@fastmail.com> - 1.6-0.1-beta
 	Initial release 1.6-0.1-beta
