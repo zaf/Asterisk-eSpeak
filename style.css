@@ -10,6 +10,10 @@
      width: 750px;
  }
  
+ img {
+     border: 0;
+ }
+ 
  h1 {
      font-size: 3.8em;
      color: #ffffff;
