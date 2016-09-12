@@ -46,7 +46,6 @@ ASTERISK_REGISTER_FILE()
 #include "asterisk/config.h"
 #include "asterisk/utils.h"
 
-#define AST_MODULE_SELF NULL
 #define AST_MODULE "eSpeak"
 #define ESPEAK_CONFIG "espeak.conf"
 #define MAXLEN 4096
