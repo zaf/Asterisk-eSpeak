@@ -6,8 +6,7 @@
 # the GNU General Public License Version 2. See the COPYING file
 # at the top of the source tree.
 
-INSTALL:=install
-ASTLIBDIR:=$(shell awk '/moddir/{print $$3}' /etc/asterisk/asterisk.conf)
+ASTLIBDIR:=$(shell awk '/moddir/{print $$3}' /etc/asterisk/asterisk.conf 2> /dev/null)
 ifeq ($(strip $(ASTLIBDIR)),)
 	MODULES_DIR:=$(INSTALL_PREFIX)/usr/lib/asterisk/modules
 else
@@ -17,9 +16,10 @@ ASTETCDIR:=$(INSTALL_PREFIX)/etc/asterisk
 SAMPLENAME:=espeak.conf.sample
 CONFNAME:=$(basename $(SAMPLENAME))
 
-CC=gcc
-OPTIMIZE=-O2
-DEBUG=-g
+INSTALL:=install
+CC:=gcc
+OPTIMIZE:=-O2
+DEBUG:=-g
 
 LIBS+=-lespeak -lsamplerate
 CFLAGS+=-pipe -fPIC -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE -DAST_MODULE_SELF_SYM=__internal_app_espeak_self
@@ -33,7 +33,7 @@ all: app_espeak.so
 	@echo " +-------------------------------------------+"
 
 app_espeak.o: app_espeak.c
-	$(CC) $(CFLAGS) $(DEBUG) $(OPTIMIZE) -c -o app_espeak.o app_espeak.c
+	$(CC) $(CFLAGS) $(DEBUG) $(OPTIMIZE) -c -o $@ $*.c
 
 app_espeak.so: app_espeak.o
 	$(CC) -shared -Xlinker -x -o $@ $< $(LIBS)
