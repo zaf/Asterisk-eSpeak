@@ -3,21 +3,16 @@
 ===========================================
 
 This provides the "Espeak" dialplan application, which allows you to use
-the Espeak speech synthesizer with Asterisk. This module invokes the Espeak TTS engine
-locally, and uses it to render text to speech.
+the Espeak-ng speech synthesizer with Asterisk. This module invokes
+the Espeak-ng TTS engine locally, and uses it to render text to speech.
 It works with asterisk versions 1.6 or later
 
 ------------
 Requirements
 ------------
 Asterisk header files
-Espeak libraries and header files
-	**It is recommended to use espeak version 1.41.01 or newer.
-	Earlier versions of epseak had a file descriptor leak that could
-	cause asterisk to crash. If upgrading is not an option patch your current
-	version of epseak with the espeak.patch provided here.
+Espeak-ng libraries and header files
 libsamplerate libraries and header files
-
 
 ------------
 Installation

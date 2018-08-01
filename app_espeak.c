@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include <espeak/speak_lib.h>
+#include <espeak-ng/speak_lib.h>
 #include <samplerate.h>
 #include "asterisk/app.h"
 #include "asterisk/channel.h"
@@ -52,8 +52,7 @@
 #define DEF_VOLUME 100
 #define DEF_WORDGAP 1
 #define DEF_PITCH 50
-#define DEF_CAPIND 0
-#define DEF_VOICE "default"
+#define DEF_VOICE "en-us"
 #define DEF_DIR "/tmp"
 #define ESPK_BUFFER 2048
 
@@ -74,7 +73,6 @@ static int speed;
 static int volume;
 static int wordgap;
 static int pitch;
-static int capind;
 static const char *def_voice;
 
 static int read_config(const char *espeak_conf)
@@ -88,7 +86,6 @@ static int read_config(const char *espeak_conf)
 	volume = DEF_VOLUME;
 	wordgap = DEF_WORDGAP;
 	pitch = DEF_PITCH;
-	capind = DEF_CAPIND;
 	def_voice = DEF_VOICE;
 
 	cfg = ast_config_load(espeak_conf, config_flags);
@@ -134,13 +131,6 @@ static int read_config(const char *espeak_conf)
 			if (errno == ERANGE) {
 				ast_log(LOG_WARNING, "eSpeak: Error reading pitch from config file\n");
 				pitch = DEF_PITCH;
-			}
-		}
-		if ((temp = ast_variable_retrieve(cfg, "voice", "capind"))) {
-			capind = (int) strtol(temp, NULL, 10);
-			if (errno == ERANGE) {
-				ast_log(LOG_WARNING, "eSpeak: Error reading capind from config file\n");
-				capind = DEF_CAPIND;
 			}
 		}
 		if ((temp = ast_variable_retrieve(cfg, "voice", "voice")))
@@ -345,10 +335,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 	if ( espeak_SetParameter(espeakPITCH, pitch, 0) != EE_OK ) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to set pitch=%d.\n", pitch);
-		return -1;
-	}
-	if ( espeak_SetParameter(espeakCAPITALS, capind, 0) != EE_OK ) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to set capind=%d.\n", capind);
 		return -1;
 	}
 

@@ -1,3 +1,6 @@
+2018-08-01 Lefteris Zafiris <zaf@fastmail.com> - 4.0-rc1
+	Use espeak-ng for speech synthesis.
+
 2016-03-19 Lefteris Zafiris <zaf@fastmail.com> - 3.0
 	Removed the dependency to libsndfile.
 	Better error checking during espeak initialisation.

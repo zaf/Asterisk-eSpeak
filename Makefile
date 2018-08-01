@@ -21,7 +21,7 @@ CC:=gcc
 OPTIMIZE:=-O2
 DEBUG:=-g
 
-LIBS+=-lespeak -lsamplerate
+LIBS+=-lespeak-ng -lsamplerate
 CFLAGS+=-pipe -fPIC -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE -DAST_MODULE_SELF_SYM=__internal_app_espeak_self
 
 all: app_espeak.so

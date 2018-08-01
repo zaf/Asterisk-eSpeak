@@ -28,7 +28,7 @@
 ; The voice to use, i.e.
 ; the name of the voice file to use from from espeak-data/voices
 ; Use "espeak --voices" for a list of available voices
-; (default is "default")
+; (default is "en-us")
 ;
 ;voice=af
 ;
@@ -47,8 +47,3 @@
 ; Pitch adjustment, 0 to 99, default is 50
 ;
 ;pitch=40
-;
-; Indicate capital letters with: 1=sound, 2=the word "capitals",
-; higher values = a pitch increase
-;
-;capind=15
