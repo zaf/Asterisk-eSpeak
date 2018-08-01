@@ -1,5 +1,8 @@
-2018-08-01 Lefteris Zafiris <zaf@fastmail.com> - 4.0-rc1
+2018-08-01 Lefteris Zafiris <zaf@fastmail.com> - 5.0-rc1
 	Use espeak-ng for speech synthesis.
+
+2017-08-12 Lefteris Zafiris <zaf@fastmail.com> - 4.0
+	Compatibility with asterisk 14 and 15.
 
 2016-03-19 Lefteris Zafiris <zaf@fastmail.com> - 3.0
 	Removed the dependency to libsndfile.
