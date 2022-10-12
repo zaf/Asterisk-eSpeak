@@ -215,7 +215,7 @@ static int raw_resample(char *fname, double ratio)
 		goto CLEAN3;
 	}
 
-	if ((out_buff = ast_malloc(out_frames*sizeof(float))) == NULL) {
+	if ((out_buff = ast_malloc(out_frames*sizeof(short))) == NULL) {
 		res = -1;
 		goto CLEAN3;
 	}
