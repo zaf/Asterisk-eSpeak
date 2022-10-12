@@ -68,7 +68,7 @@ static struct ast_config *cfg;
 static struct ast_flags config_flags = { 0 };
 static const char *cachedir;
 static int usecache;
-static double target_sample_rate;
+static int target_sample_rate;
 static int speed;
 static int volume;
 static int wordgap;
@@ -139,7 +139,7 @@ static int read_config(const char *espeak_conf)
 
 	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
 		ast_log(LOG_WARNING,
-				"eSpeak: Unsupported sample rate: %lf. Falling back to %d\n",
+				"eSpeak: Unsupported sample rate: %d. Falling back to %d\n",
 				target_sample_rate, DEF_RATE);
 		target_sample_rate = DEF_RATE;
 	}
@@ -281,7 +281,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 
 	ast_debug(1,
-			  "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %lf\n",
+			  "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %d\n",
 			  args.text, args.interrupt, voice, target_sample_rate);
 
 	/*Cache mechanism */
