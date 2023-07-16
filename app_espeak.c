@@ -415,10 +415,6 @@ static int manager_espeak(struct mansession *s, const struct message *m)
 	const char *text = astman_get_header(m, "Text");
 	const char *interrupt = astman_get_header(m, "Interrupt");
 	const char *language = astman_get_header(m, "Language");
-	//const char *command = astman_get_header(m, "Command");
-	//int opt_arg_sz = 2;
-	//char *opts[2] = { NULL, };
-	//struct ast_flags flags = { 0 };
 	int res;
 	char args[PATH_MAX];
 
