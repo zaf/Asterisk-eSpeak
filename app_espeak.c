@@ -407,6 +407,51 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	return res;
 }
 
+static int manager_espeak(struct mansession *s, const struct message *m)
+{
+	struct ast_channel *c;
+	const char *name = astman_get_header(m, "Channel");
+	const char *id = astman_get_header(m, "ActionID");
+	const char *text = astman_get_header(m, "Text");
+	const char *interrupt = astman_get_header(m, "Interrupt");
+	const char *language = astman_get_header(m, "Language");
+	int res;
+	char args[PATH_MAX];
+
+	if (ast_strlen_zero(name)) {
+		astman_send_error(s, m, "No channel specified");
+		return AMI_SUCCESS;
+	}
+
+	c = ast_channel_get_by_name(name);
+	if (!c) {
+		astman_send_error(s, m, "No such channel");
+		return AMI_SUCCESS;
+	}
+
+	snprintf(args, sizeof(args), "%s,%s,%s", text, interrupt, language);
+
+	res = espeak_exec(c, args);
+
+	if (res) {
+		ast_channel_unref(c);
+		astman_send_error(s, m, "Could not start eSpeak");
+		return AMI_SUCCESS;
+	}
+
+	astman_append(s, "Response: Success\r\n");
+
+	if (!ast_strlen_zero(id)) {
+		astman_append(s, "ActionID: %s\r\n", id);
+	}
+
+	astman_append(s, "\r\n");
+
+	ast_channel_unref(c);
+
+	return AMI_SUCCESS;
+}
+
 static int reload_module(void)
 {
 	ast_config_destroy(cfg);
@@ -422,7 +467,11 @@ static int unload_module(void)
 static int load_module(void)
 {
 	read_config(ESPEAK_CONFIG);
-	if (ast_register_application_xml(app, espeak_exec)) {
+	int res;
+	res = ast_register_application_xml(app, espeak_exec);
+	res |= ast_manager_register_xml("eSpeak", EVENT_FLAG_SYSTEM, manager_espeak);
+
+	if (res) {
 		ast_config_destroy(cfg);
 		return AST_MODULE_LOAD_DECLINE;
 	}
