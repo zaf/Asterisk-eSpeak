@@ -80,7 +80,8 @@ static struct ast_config *cfg;
 static struct ast_flags config_flags = { 0 };
 static const char *cachedir;
 static int usecache;
-static double target_sample_rate;
+static int target_sample_rate;
+static int sample_rate;
 static int speed;
 static int volume;
 static int wordgap;
@@ -151,7 +152,7 @@ static int read_config(const char *espeak_conf)
 
 	if (target_sample_rate != 8000 && target_sample_rate != 16000) {
 		ast_log(LOG_WARNING,
-				"eSpeak: Unsupported sample rate: %lf. Falling back to %d\n",
+				"eSpeak: Unsupported sample rate: %d. Falling back to %d\n",
 				target_sample_rate, DEF_RATE);
 		target_sample_rate = DEF_RATE;
 	}
@@ -226,7 +227,7 @@ static int raw_resample(char *fname, double ratio)
 		goto CLEAN3;
 	}
 
-	if ((out_buff = ast_malloc(out_frames*sizeof(float))) == NULL) {
+	if ((out_buff = ast_malloc(out_frames*sizeof(short))) == NULL) {
 		res = -1;
 		goto CLEAN3;
 	}
@@ -251,6 +252,28 @@ CLEAN1:
 	return res;
 }
 
+static int configure_espeak(void)
+{
+	if ( espeak_SetParameter(espeakRATE, speed, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set speed=%d.\n", speed);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakVOLUME, volume, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set volume=%d.\n", volume);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakWORDGAP, wordgap, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set wordgap=%d.\n", wordgap);
+		return -1;
+	}
+	if ( espeak_SetParameter(espeakPITCH, pitch, 0) != EE_OK ) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to set pitch=%d.\n", pitch);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int espeak_exec(struct ast_channel *chan, const char *data)
 {
 	int res = 0;
@@ -262,7 +285,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	char cachefile[MAXLEN];
 	char raw_name[17] = "/tmp/espk_XXXXXX";
 	char slin_name[23];
-	int sample_rate;
 	const char *voice;
 	AST_DECLARE_APP_ARGS(args,
 		AST_APP_ARG(text);
@@ -293,7 +315,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 
 	ast_debug(1,
-			  "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %lf\n",
+			  "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %d\n",
 			  args.text, args.interrupt, voice, target_sample_rate);
 
 	/*Cache mechanism */
@@ -324,29 +346,8 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 
 	/* Invoke eSpeak */
-	if ((sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0)) == -1) {
-		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
-		return -1;
-	}
-	espeak_SetSynthCallback(synth_callback);
 	if ( espeak_SetVoiceByName(voice) != EE_OK ) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to set voice=%s.\n", voice);
-		return -1;
-	}
-	if ( espeak_SetParameter(espeakRATE, speed, 0) != EE_OK ) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to set speed=%d.\n", speed);
-		return -1;
-	}
-	if ( espeak_SetParameter(espeakVOLUME, volume, 0) != EE_OK ) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to set volume=%d.\n", volume);
-		return -1;
-	}
-	if ( espeak_SetParameter(espeakWORDGAP, wordgap, 0) != EE_OK ) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to set wordgap=%d.\n", wordgap);
-		return -1;
-	}
-	if ( espeak_SetParameter(espeakPITCH, pitch, 0) != EE_OK ) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to set pitch=%d.\n", pitch);
 		return -1;
 	}
 
@@ -361,7 +362,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	espk_error = espeak_Synth(args.text, strlen(args.text), 0, POS_CHARACTER,
 			(int) strlen(args.text), espeakCHARS_AUTO, NULL, fl);
-	espeak_Terminate();
 	fclose(fl);
 	if (espk_error != EE_OK) {
 		ast_log(LOG_ERROR,
@@ -409,24 +409,42 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 static int reload_module(void)
 {
+  int res = 0;
 	ast_config_destroy(cfg);
-	return read_config(ESPEAK_CONFIG);
+	res = read_config(ESPEAK_CONFIG);
+	configure_espeak();
+	return res;
+
 }
 
 static int unload_module(void)
 {
+	espeak_Terminate();
 	ast_config_destroy(cfg);
 	return ast_unregister_application(app);
 }
 
 static int load_module(void)
 {
-	read_config(ESPEAK_CONFIG);
+  if (read_config(ESPEAK_CONFIG)) {
+    return AST_MODULE_LOAD_DECLINE;
+  }
+	if ((sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0)) == -1) {
+		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
+    ast_config_destroy(cfg);
+		return AST_MODULE_LOAD_DECLINE;
+	}
+	espeak_SetSynthCallback(synth_callback);
+  if (configure_espeak()) {
+     ast_config_destroy(cfg);
+     return AST_MODULE_LOAD_DECLINE;
+  }
 	if (ast_register_application_xml(app, espeak_exec)) {
 		ast_config_destroy(cfg);
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	return AST_MODULE_LOAD_SUCCESS;
+
 }
 
 AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "eSpeak TTS Interface",
