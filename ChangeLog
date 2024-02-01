@@ -1,3 +1,8 @@
+2024-02-01 Lefteris Zafiris <zaf@fastmail.com> - 5.0
+	Fixed Espeak initialisation bug (Patrik Dahlström)
+	Fixed sample rate mismatch when using mbrola voices.
+	Compatibility with asterisk 20.
+
 2018-08-01 Lefteris Zafiris <zaf@fastmail.com> - 5.0-rc1
 	Use espeak-ng for speech synthesis.
 

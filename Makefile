@@ -22,7 +22,7 @@ OPTIMIZE:=-O2
 DEBUG:=-g
 
 LIBS+=-lespeak-ng -lsamplerate
-CFLAGS+=-pipe -fPIC -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE -DAST_MODULE_SELF_SYM=__internal_app_espeak_self
+CFLAGS+=-pipe -fPIC -Wall -Wextra -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -D_REENTRANT -D_GNU_SOURCE
 
 all: app_espeak.so
 	@echo " +-------- app_espeak Build Complete --------+"

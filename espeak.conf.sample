@@ -28,6 +28,7 @@
 ; The voice to use, i.e.
 ; the name of the voice file to use from from espeak-data/voices
 ; Use "espeak --voices" for a list of available voices
+; MBROLA voices can also be used if they are available (eg "mb-us1")
 ; (default is "en-us")
 ;
 ;voice=af

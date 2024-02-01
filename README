@@ -27,7 +27,7 @@ $ make samples
 -----
 Usage
 -----
-Espeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,
+Espeak(text[,intkeys,language]):  This will invoke the eSpeak-ng TTS engine,
 send a text string, get back the resulting waveform and play it to
 the user, allowing any given interrupt keys to immediately terminate
 and return.

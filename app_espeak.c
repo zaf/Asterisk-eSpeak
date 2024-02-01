@@ -18,11 +18,11 @@
 
 /*! \file
  *
- * \brief Say text to the user, using eSpeak TTS engine.
+ * \brief Say text to the user, using eSpeak-ng TTS engine.
  *
  * \author\verbatim Lefteris Zafiris <zaf@fastmail.com> \endverbatim
  *
- * \extref eSpeak text to speech Synthesis System - http://espeak.sourceforge.net/
+ * \extref eSpeak-ng text to speech Synthesis System - https://github.com/espeak-ng/espeak-ng
  *
  * \ingroup applications
  */
@@ -31,12 +31,15 @@
 	<defaultenabled>no</defaultenabled>
  ***/
 
+# define AST_MODULE_SELF_SYM __internal_app_espeak_self
+
 #include "asterisk.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <espeak-ng/speak_lib.h>
+#include <espeak-ng/espeak_ng.h>
 #include <samplerate.h>
 #include "asterisk/app.h"
 #include "asterisk/channel.h"
@@ -54,12 +57,12 @@
 #define DEF_PITCH 50
 #define DEF_VOICE "en-us"
 #define DEF_DIR "/tmp"
-#define ESPK_BUFFER 2048
+#define ESPK_BUFFER 4096
 
 /*** DOCUMENTATION
 	<application name="eSpeak" language="en_US">
 		<synopsis>
-			Say text to the user, using eSpeak speech synthesizer.
+			Say text to the user, using eSpeak-ng speech synthesizer.
 		</synopsis>
 		<syntax>
 			<parameter name="text" required="true" />
@@ -67,7 +70,7 @@
 			<parameter name="language" />
 		</syntax>
 		<description>
-			<para>eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,
+			<para>eSpeak(text[,intkeys,language]):  This will invoke the eSpeak-ng TTS engine,
 			send a text string, get back the resulting waveform and play it to the user,
 			allowing any given interrupt keys to immediately terminate and return.</para>
 		</description>
@@ -81,7 +84,6 @@ static struct ast_flags config_flags = { 0 };
 static const char *cachedir;
 static int usecache;
 static int target_sample_rate;
-static int sample_rate;
 static int speed;
 static int volume;
 static int wordgap;
@@ -270,7 +272,6 @@ static int configure_espeak(void)
 		ast_log(LOG_ERROR, "eSpeak: Failed to set pitch=%d.\n", pitch);
 		return -1;
 	}
-
 	return 0;
 }
 
@@ -285,6 +286,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	char cachefile[MAXLEN];
 	char raw_name[17] = "/tmp/espk_XXXXXX";
 	char slin_name[23];
+	int sample_rate;
 	const char *voice;
 	AST_DECLARE_APP_ARGS(args,
 		AST_APP_ARG(text);
@@ -318,7 +320,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 			  "eSpeak:\nText passed: %s\nInterrupt key(s): %s\nLanguage: %s\nRate: %d\n",
 			  args.text, args.interrupt, voice, target_sample_rate);
 
-	/*Cache mechanism */
+	/* Cache mechanism */
 	if (usecache) {
 		char MD5_name[33];
 		ast_md5_hash(MD5_name, args.text);
@@ -345,12 +347,11 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		}
 	}
 
-	/* Invoke eSpeak */
+	/* Set voice - language */
 	if ( espeak_SetVoiceByName(voice) != EE_OK ) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to set voice=%s.\n", voice);
 		return -1;
 	}
-
 	if ((raw_fd = mkstemp(raw_name)) == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to create audio file.\n");
 		return -1;
@@ -371,6 +372,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	}
 
 	/* Resample sound file */
+	sample_rate = espeak_ng_GetSampleRate();
 	if (sample_rate != target_sample_rate) {
 		double ratio = (double) target_sample_rate / (double) sample_rate;
 		if ((res = raw_resample(raw_name, ratio)) != 0) {
@@ -409,12 +411,11 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 static int reload_module(void)
 {
-  int res = 0;
 	ast_config_destroy(cfg);
-	res = read_config(ESPEAK_CONFIG);
-	configure_espeak();
-	return res;
-
+	if (read_config(ESPEAK_CONFIG)) {
+		return -1;
+	}
+	return configure_espeak();
 }
 
 static int unload_module(void)
@@ -426,25 +427,24 @@ static int unload_module(void)
 
 static int load_module(void)
 {
-  if (read_config(ESPEAK_CONFIG)) {
-    return AST_MODULE_LOAD_DECLINE;
-  }
-	if ((sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0)) == -1) {
+	if (read_config(ESPEAK_CONFIG)) {
+		return AST_MODULE_LOAD_DECLINE;
+	}
+	if (espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0) == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
-    ast_config_destroy(cfg);
+		ast_config_destroy(cfg);
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	espeak_SetSynthCallback(synth_callback);
-  if (configure_espeak()) {
-     ast_config_destroy(cfg);
-     return AST_MODULE_LOAD_DECLINE;
-  }
-	if (ast_register_application_xml(app, espeak_exec)) {
+	if (configure_espeak()) {
+		ast_config_destroy(cfg);
+		return AST_MODULE_LOAD_DECLINE;
+	}
+	if (ast_register_application(app, espeak_exec, NULL, NULL)) {
 		ast_config_destroy(cfg);
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	return AST_MODULE_LOAD_SUCCESS;
-
 }
 
 AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "eSpeak TTS Interface",
