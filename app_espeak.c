@@ -56,13 +56,25 @@
 #define DEF_DIR "/tmp"
 #define ESPK_BUFFER 2048
 
+/*** DOCUMENTATION
+	<application name="eSpeak" language="en_US">
+		<synopsis>
+			Say text to the user, using eSpeak speech synthesizer.
+		</synopsis>
+		<syntax>
+			<parameter name="text" required="true" />
+			<parameter name="intkeys" />
+			<parameter name="language" />
+		</syntax>
+		<description>
+			<para>eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,
+			send a text string, get back the resulting waveform and play it to the user,
+			allowing any given interrupt keys to immediately terminate and return.</para>
+		</description>
+	</application>
+ ***/
+
 static const char *app = "eSpeak";
-static const char *synopsis = "Say text to the user, using eSpeak speech synthesizer.";
-static const char *descrip =
-	"  eSpeak(text[,intkeys,language]):  This will invoke the eSpeak TTS engine,\n"
-	"send a text string, get back the resulting waveform and play it to\n"
-	"the user, allowing any given interrupt keys to immediately terminate\n"
-	"and return.\n";
 
 static struct ast_config *cfg;
 static struct ast_flags config_flags = { 0 };
@@ -397,10 +409,12 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 static int reload_module(void)
 {
+  int res = 0;
 	ast_config_destroy(cfg);
-	read_config(ESPEAK_CONFIG);
+	res = read_config(ESPEAK_CONFIG);
 	configure_espeak();
-	return 0;
+	return res;
+
 }
 
 static int unload_module(void)
@@ -412,15 +426,25 @@ static int unload_module(void)
 
 static int load_module(void)
 {
-	read_config(ESPEAK_CONFIG);
+  if (read_config(ESPEAK_CONFIG)) {
+    return AST_MODULE_LOAD_DECLINE;
+  }
 	if ((sample_rate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0)) == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
-		return -1;
+    ast_config_destroy(cfg);
+		return AST_MODULE_LOAD_DECLINE;
 	}
 	espeak_SetSynthCallback(synth_callback);
-	configure_espeak();
-	return ast_register_application(app, espeak_exec, synopsis, descrip) ?
-		AST_MODULE_LOAD_DECLINE : AST_MODULE_LOAD_SUCCESS;
+  if (configure_espeak()) {
+     ast_config_destroy(cfg);
+     return AST_MODULE_LOAD_DECLINE;
+  }
+	if (ast_register_application_xml(app, espeak_exec)) {
+		ast_config_destroy(cfg);
+		return AST_MODULE_LOAD_DECLINE;
+	}
+	return AST_MODULE_LOAD_SUCCESS;
+
 }
 
 AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "eSpeak TTS Interface",
