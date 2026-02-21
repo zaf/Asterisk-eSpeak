@@ -1,7 +1,7 @@
 /*
  * Asterisk -- An open source telephony toolkit.
  *
- * Copyright (C) 2009 - 2016, Lefteris Zafiris
+ * Copyright (C) 2009 - 2026, Lefteris Zafiris
  *
  * Lefteris Zafiris <zaf@fastmail.com>
  *
@@ -204,11 +204,10 @@ static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
 	return 1; /* Stop synthesis */
 }
 
-/* Sound data resampling */
-static int raw_resample(char *fname, double ratio)
+/* Sound data resampling using an open file descriptor */
+static int raw_resample(int fd, double ratio)
 {
 	int res = 0;
-	FILE *fl;
 	struct stat st;
 	int in_size;
 	short *in_buff, *out_buff;
@@ -216,27 +215,24 @@ static int raw_resample(char *fname, double ratio)
 	float *inp, *outp;
 	SRC_DATA rate_change;
 
-	if ((fl = fopen(fname, "r")) == NULL) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to open file for resampling.\n");
-		return -1;
-	}
-	if ((stat(fname, &st) == -1)) {
+	if (fstat(fd, &st) == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to stat file for resampling.\n");
-		fclose(fl);
 		return -1;
 	}
 	in_size = st.st_size;
 	if ((in_buff = ast_malloc(in_size)) == NULL) {
-		fclose(fl);
 		return -1;
 	}
-	if ((fread(in_buff, 1, in_size, fl) != (size_t)in_size)) {
+	if (lseek(fd, 0, SEEK_SET) == -1) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to seek in file for resampling.\n");
+		ast_free(in_buff);
+		return -1;
+	}
+	if (read(fd, in_buff, in_size) != (ssize_t)in_size) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to read file for resampling.\n");
-		fclose(fl);
 		res = -1;
 		goto CLEAN1;
 	}
-	fclose(fl);
 	in_frames = in_size / 2;
 
 	if ((inp = (float *)(ast_malloc(in_frames * sizeof(float)))) == NULL) {
@@ -256,8 +252,8 @@ static int raw_resample(char *fname, double ratio)
 	rate_change.src_ratio = ratio;
 
 	if ((res = src_simple(&rate_change, SRC_SINC_FASTEST, 1)) != 0) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file '%s': '%s'\n",
-				fname, src_strerror(res));
+		ast_log(LOG_ERROR, "eSpeak: Failed to resample sound file: '%s'\n",
+				src_strerror(res));
 		res = -1;
 		goto CLEAN3;
 	}
@@ -267,14 +263,11 @@ static int raw_resample(char *fname, double ratio)
 		goto CLEAN3;
 	}
 	src_float_to_short_array(rate_change.data_out, out_buff, out_frames);
-	if ((fl = fopen(fname, "w+")) != NULL) {
-		if ((fwrite(out_buff, 1, 2*out_frames, fl)) != (size_t)(2*out_frames)) {
-			ast_log(LOG_ERROR, "eSpeak: Failed to write resampled output file.\n");
-			res = -1;
-		}
-		fclose(fl);
-	} else {
-		ast_log(LOG_ERROR, "eSpeak: Failed to open output file for resampling.\n");
+	if (ftruncate(fd, 0) == -1 || lseek(fd, 0, SEEK_SET) == -1) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to prepare file for resampled output.\n");
+		res = -1;
+	} else if (write(fd, out_buff, 2*out_frames) != (ssize_t)(2*out_frames)) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to write resampled output file.\n");
 		res = -1;
 	}
 	ast_free(out_buff);
@@ -317,8 +310,8 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	char *mydata, *format;
 	int writecache = 0;
 	char cachefile[MAXLEN];
-	char raw_name[17] = "/tmp/espk_XXXXXX";
-	char slin_name[23];
+	char raw_name[280];
+	char slin_name[286];
 	int sample_rate;
 	const char *voice;
 	struct espeak_cfg local_cfg;
@@ -342,6 +335,8 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	ast_rwlock_rdlock(&config_lock);
 	local_cfg = global_cfg;
 	ast_rwlock_unlock(&config_lock);
+
+	snprintf(raw_name, sizeof(raw_name), "%s/espk_XXXXXX", local_cfg.cachedir);
 
 	if (!ast_strlen_zero(args.language)) {
 		voice = args.language;
@@ -417,10 +412,10 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	espk_error = espeak_Synth(args.text, strlen(args.text)+1, 0, POS_CHARACTER,
 			(int) strlen(args.text), espeakCHARS_AUTO, NULL, fl);
 	ast_mutex_unlock(&espeak_lock);
-	fclose(fl);
 	if (espk_error != EE_OK) {
 		ast_log(LOG_ERROR,
 				"eSpeak: Failed to synthesize speech for the specified text.\n");
+		fclose(fl);
 		unlink(raw_name);
 		return -1;
 	}
@@ -429,12 +424,20 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	sample_rate = espeak_ng_GetSampleRate();
 	if (sample_rate != local_cfg.sample_rate) {
 		double ratio = (double) local_cfg.sample_rate / (double) sample_rate;
-		if ((res = raw_resample(raw_name, ratio)) != 0) {
+		if (fflush(fl) != 0) {
+			ast_log(LOG_ERROR, "eSpeak: Failed to flush audio file.\n");
+			fclose(fl);
+			unlink(raw_name);
+			return -1;
+		}
+		if ((res = raw_resample(fileno(fl), ratio)) != 0) {
 			ast_log(LOG_ERROR, "eSpeak: Failed to resample audio file '%s'\n", raw_name);
+			fclose(fl);
 			unlink(raw_name);
 			return -1;
 		}
 	}
+	fclose(fl);
 
 	/* Create filenames */
 	if (local_cfg.sample_rate == 16000) {
