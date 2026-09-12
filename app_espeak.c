@@ -301,8 +301,8 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	char *mydata, *format;
 	int writecache = 0;
 	char cachefile[MAXLEN];
-	char raw_name[17] = "/tmp/espk_XXXXXX";
-	char slin_name[23];
+	char raw_name[MAXLEN + 16];
+	char slin_name[MAXLEN + 24];
 	int sample_rate;
 	int use_cache, t_rate;
 	int l_speed, l_volume, l_wordgap, l_pitch;
@@ -388,7 +388,17 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		}
 	}
 
-	if ((raw_fd = mkstemp(raw_name)) == -1) {
+	/* Create the temp file in the cache dir when a cache write is pending,
+	 * so the final rename is atomic and on the same filesystem. */
+	if (writecache)
+		snprintf(raw_name, sizeof(raw_name), "%s/espk_XXXXXX", l_cachedir);
+	else
+		ast_copy_string(raw_name, "/tmp/espk_XXXXXX", sizeof(raw_name));
+	if ((raw_fd = mkstemp(raw_name)) == -1 && writecache) {
+		ast_copy_string(raw_name, "/tmp/espk_XXXXXX", sizeof(raw_name));
+		raw_fd = mkstemp(raw_name);
+	}
+	if (raw_fd == -1) {
 		ast_log(LOG_ERROR, "eSpeak: Failed to create audio file.\n");
 		return -1;
 	}
