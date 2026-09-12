@@ -1,3 +1,10 @@
+2026-09-12 Lefteris Zafiris <zaf@fastmail.com> - 6.0
+    Fixed cache naming and file handling.
+    Fixed config value parsing. Safer module loading,
+    unloading and eSpeak initialisation.
+    Proper locking around espeak synth engine.
+    Fixed short writes in synth callback. Makefile updates.
+
 2024-02-01 Lefteris Zafiris <zaf@fastmail.com> - 5.0
 	Fixed Espeak initialisation bug (Patrik Dahlström)
 	Fixed sample rate mismatch when using mbrola voices.
