@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <espeak-ng/speak_lib.h>
 #include <espeak-ng/espeak_ng.h>
@@ -53,13 +54,14 @@
 #define ESPEAK_CONFIG "espeak.conf"
 #define MAXLEN 4096
 #define MAXTEXT 32768
+#define DEF_MAXTEXT 4096
 #define DEF_RATE 8000
 #define DEF_SPEED 150
 #define DEF_VOLUME 100
 #define DEF_WORDGAP 1
 #define DEF_PITCH 50
 #define DEF_VOICE "en-us"
-#define DEF_DIR "/tmp"
+#define DEF_DIR "/var/lib/asterisk/espeakcache"
 #define ESPK_BUFFER 4096
 
 /*** DOCUMENTATION
@@ -90,6 +92,7 @@ static int speed;
 static int volume;
 static int wordgap;
 static int pitch;
+static int maxtext;
 
 /* Protects the config values above. */
 AST_RWLOCK_DEFINE_STATIC(cfg_lock);
@@ -137,6 +140,7 @@ static int read_config(const char *espeak_conf)
 	volume = DEF_VOLUME;
 	wordgap = DEF_WORDGAP;
 	pitch = DEF_PITCH;
+	maxtext = DEF_MAXTEXT;
 
 	if (cfg) {
 		if ((temp = ast_variable_retrieve(cfg, "general", "usecache")))
@@ -146,6 +150,8 @@ static int read_config(const char *espeak_conf)
 			ast_copy_string(cachedir, temp, sizeof(cachedir));
 		if ((temp = ast_variable_retrieve(cfg, "general", "samplerate")))
 			target_sample_rate = parse_int(temp, DEF_RATE, 8000, 16000, "samplerate");
+		if ((temp = ast_variable_retrieve(cfg, "general", "maxtext")))
+			maxtext = parse_int(temp, DEF_MAXTEXT, 1, MAXTEXT, "maxtext");
 		if ((temp = ast_variable_retrieve(cfg, "voice", "speed")))
 			speed = parse_int(temp, DEF_SPEED, 80, 450, "speed");
 		if ((temp = ast_variable_retrieve(cfg, "voice", "wordgap")))
@@ -167,11 +173,17 @@ static int read_config(const char *espeak_conf)
 	}
 	if (usecache) {
 		struct stat st;
-		if (stat(cachedir, &st) || !S_ISDIR(st.st_mode))
-			ast_log(LOG_WARNING, "eSpeak: Cache directory %s does not exist\n", cachedir);
-		else if (st.st_mode & S_IWOTH)
-			ast_log(LOG_WARNING,
-					"eSpeak: Cache directory %s is world-writable, cache can be poisoned\n", cachedir);
+		if (stat(cachedir, &st) && (ast_mkdir(cachedir, 0700) || stat(cachedir, &st))) {
+			ast_log(LOG_ERROR,
+					"eSpeak: Failed to create cache directory %s, caching disabled\n", cachedir);
+			usecache = 0;
+		} else if (!S_ISDIR(st.st_mode) || st.st_uid != geteuid()
+				|| (st.st_mode & (S_IWGRP | S_IWOTH))) {
+			ast_log(LOG_ERROR,
+					"eSpeak: Cache directory %s must be owned by the Asterisk user "
+					"and not group/world writable, caching disabled\n", cachedir);
+			usecache = 0;
+		}
 	}
 	ast_rwlock_unlock(&cfg_lock);
 	if (cfg)
@@ -238,6 +250,8 @@ static int raw_resample(char *fname, double ratio)
 		goto CLEAN1;
 	}
 	src_short_to_float_array(in_buff, inp, (int) in_frames);
+	/* +1 headroom is required and sufficient for src_simple: measured
+	 * minimum slack is exactly one frame. Revisit if the converter changes. */
 	out_frames = (long)((double) in_frames * ratio) + 1;
 	if ((outp = ast_malloc((size_t) out_frames * sizeof(float))) == NULL) {
 		res = -1;
@@ -314,7 +328,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	char slin_name[MAXLEN + 24];
 	int sample_rate;
 	struct synth_data sd = { NULL, 0 };
-	int use_cache, t_rate;
+	int use_cache, t_rate, l_maxtext;
 	int l_speed, l_volume, l_wordgap, l_pitch;
 	char l_cachedir[MAXLEN];
 	char l_voice[64];
@@ -329,11 +343,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		ast_log(LOG_ERROR, "eSpeak requires arguments (text and options)\n");
 		return -1;
 	}
-	mydata = ast_strdupa(data);
-	AST_STANDARD_APP_ARGS(args, mydata);
-
-	if (args.interrupt && !strcasecmp(args.interrupt, "any"))
-		args.interrupt = AST_DIGIT_ANY;
 
 	ast_rwlock_rdlock(&cfg_lock);
 	use_cache = usecache;
@@ -342,11 +351,27 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	l_volume = volume;
 	l_wordgap = wordgap;
 	l_pitch = pitch;
+	l_maxtext = maxtext;
 	ast_copy_string(l_cachedir, cachedir, sizeof(l_cachedir));
 	ast_copy_string(l_voice, def_voice, sizeof(l_voice));
 	ast_rwlock_unlock(&cfg_lock);
 
+	/* Check before ast_strdupa() copies the data onto the stack. */
+	if (strlen(data) > (size_t) l_maxtext) {
+		ast_log(LOG_WARNING, "eSpeak: Text too long (max %d bytes).\n", l_maxtext);
+		return -1;
+	}
+	mydata = ast_strdupa(data);
+	AST_STANDARD_APP_ARGS(args, mydata);
+
+	if (args.interrupt && !strcasecmp(args.interrupt, "any"))
+		args.interrupt = AST_DIGIT_ANY;
+
 	if (!ast_strlen_zero(args.language)) {
+		if (strlen(args.language) >= sizeof(l_voice)) {
+			ast_log(LOG_WARNING, "eSpeak: Language argument too long.\n");
+			return -1;
+		}
 		voice = args.language;
 	} else {
 		voice = l_voice;
@@ -356,10 +381,6 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	if (ast_strlen_zero(args.text)) {
 		ast_log(LOG_WARNING, "eSpeak: No text passed for synthesis.\n");
 		return res;
-	}
-	if (strlen(args.text) > MAXTEXT) {
-		ast_log(LOG_WARNING, "eSpeak: Text too long (max %d bytes).\n", MAXTEXT);
-		return -1;
 	}
 
 	ast_debug(1,
@@ -456,7 +477,9 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	snprintf(slin_name, sizeof(slin_name), "%s.%s", raw_name, format);
 	if (rename(raw_name, slin_name)) {
-		ast_log(LOG_ERROR, "eSpeak: Failed to rename audio file: %s\n", strerror(errno));
+		char ebuf[128];
+		ast_log(LOG_ERROR, "eSpeak: Failed to rename audio file: %s\n",
+				strerror_r(errno, ebuf, sizeof(ebuf)));
 		unlink(raw_name);
 		return -1;
 	}
@@ -473,10 +496,14 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 
 	/* Save file to cache if set */
 	if (writecache) {
+		int cfd;
 		ast_debug(1, "eSpeak: Saving cache file %s\n", cachefile);
+		if ((cfd = open(slin_name, O_RDONLY)) != -1) {
+			fsync(cfd);
+			close(cfd);
+		}
 		if (ast_filerename(raw_name, cachefile, format)) {
-			if (ast_filecopy(raw_name, cachefile, format))
-				ast_log(LOG_WARNING, "eSpeak: Failed to save cache file %s\n", cachefile);
+			ast_log(LOG_WARNING, "eSpeak: Failed to save cache file %s\n", cachefile);
 			unlink(slin_name);
 		}
 	} else {
