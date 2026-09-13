@@ -52,6 +52,7 @@
 #define AST_MODULE "eSpeak"
 #define ESPEAK_CONFIG "espeak.conf"
 #define MAXLEN 4096
+#define MAXTEXT 32768
 #define DEF_RATE 8000
 #define DEF_SPEED 150
 #define DEF_VOLUME 100
@@ -178,13 +179,21 @@ static int read_config(const char *espeak_conf)
 	return 0;
 }
 
-/* espeak synthesis callback function */
+struct synth_data {
+	FILE *fl;
+	int err;
+};
+
 static int synth_callback(short *wav, int numsamples, espeak_EVENT *events)
 {
+	struct synth_data *sd = events[0].user_data;
+
 	if (wav && numsamples > 0) {
-		if (fwrite(wav, sizeof(short), (size_t) numsamples, events[0].user_data)
-				!= (size_t) numsamples)
+		if (fwrite(wav, sizeof(short), (size_t) numsamples, sd->fl)
+				!= (size_t) numsamples) {
+			sd->err = 1;
 			return 1; /* Write error, stop synthesis */
+		}
 	}
 	return 0; /* Continue synthesis */
 }
@@ -304,6 +313,7 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	char raw_name[MAXLEN + 16];
 	char slin_name[MAXLEN + 24];
 	int sample_rate;
+	struct synth_data sd = { NULL, 0 };
 	int use_cache, t_rate;
 	int l_speed, l_volume, l_wordgap, l_pitch;
 	char l_cachedir[MAXLEN];
@@ -346,6 +356,10 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 	if (ast_strlen_zero(args.text)) {
 		ast_log(LOG_WARNING, "eSpeak: No text passed for synthesis.\n");
 		return res;
+	}
+	if (strlen(args.text) > MAXTEXT) {
+		ast_log(LOG_WARNING, "eSpeak: Text too long (max %d bytes).\n", MAXTEXT);
+		return -1;
 	}
 
 	ast_debug(1,
@@ -417,12 +431,14 @@ static int espeak_exec(struct ast_channel *chan, const char *data)
 		unlink(raw_name);
 		return -1;
 	}
+	sd.fl = fl;
 	espk_error = espeak_Synth(args.text, strlen(args.text) + 1, 0, POS_CHARACTER,
-			0, espeakCHARS_AUTO, NULL, fl);
+			0, espeakCHARS_AUTO, NULL, &sd);
 	sample_rate = espeak_ng_GetSampleRate();
 	ast_mutex_unlock(&espk_lock);
-	fclose(fl);
-	if (espk_error != EE_OK) {
+	if (fclose(fl))
+		sd.err = 1;
+	if (espk_error != EE_OK || sd.err) {
 		ast_log(LOG_ERROR,
 				"eSpeak: Failed to synthesize speech for the specified text.\n");
 		unlink(raw_name);
@@ -487,9 +503,19 @@ static int unload_module(void)
 
 static int load_module(void)
 {
+	espeak_ng_STATUS result;
+
 	read_config(ESPEAK_CONFIG);
-	if (espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, ESPK_BUFFER, NULL, 0) == -1) {
-		ast_log(LOG_ERROR, "eSpeak: Internal espeak error, aborting.\n");
+	espeak_ng_InitializePath(NULL);
+	if ((result = espeak_ng_Initialize(NULL)) != ENS_OK) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to initialize espeak-ng (status %d), aborting.\n",
+				result);
+		return AST_MODULE_LOAD_DECLINE;
+	}
+	if ((result = espeak_ng_InitializeOutput(ENOUTPUT_MODE_SYNCHRONOUS, ESPK_BUFFER, NULL)) != ENS_OK) {
+		ast_log(LOG_ERROR, "eSpeak: Failed to initialize output (status %d), aborting.\n",
+				result);
+		espeak_ng_Terminate();
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	espeak_SetSynthCallback(synth_callback);
