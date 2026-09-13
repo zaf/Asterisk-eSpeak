@@ -1,4 +1,4 @@
-2026-09-12 Lefteris Zafiris <zaf@fastmail.com> - 6.0
+2026-09-13 Lefteris Zafiris <zaf@fastmail.com> - 6.0
     Fixed cache naming and file handling.
     Fixed config value parsing. Safer module loading,
     unloading and eSpeak initialisation.
