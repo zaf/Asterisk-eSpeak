@@ -61,3 +61,13 @@ License v2. See COPYING for details.
 Homepage
 --------
 http://zaf.github.io/Asterisk-eSpeak/
+
+------------------
+Known issues/notes
+------------------
+- The optional 'language' dialplan argument is passed to the espeak-ng voice
+  loader, which resolves it to a file path. It is length-limited but not
+  otherwise validated: do not pass caller-controlled data as the language
+  argument.
+- Do NOT force-unload this module ("module unload -f") while calls are using
+  it: in-flight calls can crash Asterisk. A normal unload is safe.

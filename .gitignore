@@ -1,0 +1,4 @@
+*.o
+*.so
+*.plist
+app_espeak-en_US.xml
